@@ -1,0 +1,80 @@
+#include "header.hpp"
+
+int	ft_recv(int newsockfd, char *buffer, size_t buflen)
+{
+	ssize_t		bytes_recv = 0;
+	std::ptrdiff_t	offset = 0;
+
+	while (buflen)
+	{
+		if ((bytes_recv = recv(newsockfd, buffer + offset, buflen, 0)) == -1)
+			return perror("bytes_recv"), -1;
+		else if (!bytes_recv || bytes_recv == buflen)
+			return bytes_recv;
+		else {
+			offset += bytes_recv;
+			buflen -= bytes_recv;
+		}
+		std::cout << "in here, bytes_recv: " << bytes_recv << std::endl;
+	}
+	return 0;
+}
+
+int	main(void)
+{
+	int		err, sockfd, newsockfd, optval = 1, epollfd, nfds;
+	struct addrinfo	hints, *res;
+	std::string	message("Hello world!");
+	ssize_t		bytes_recv, bytes_sent;
+	char		*buffer = new char[MAX_BUFLEN]();
+	struct epoll_event ev, events[MAX_EVENTS];
+
+	signal(SIGPIPE, SIG_IGN);
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+
+	if ((err = getaddrinfo(NULL, "3490", &hints, &res)) != 0) {
+		return std::cerr << "getaddrinfo error: " << gai_strerror(err) << '\n', 1;
+	}
+	if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
+		return perror("socket"), 1;
+	}
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+		return perror("setsockopt"), 1;
+	}
+	if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+		return perror("bind"), 1;
+	}
+	if (listen(sockfd, 5) == -1) {
+		return perror("listen"), 1;
+	}
+	if ((epollfd = epoll_create(1)) == -1) {
+		return perror("epoll_create"), 1;
+	}
+	ev.event = EPOLLIN;
+	ev.data.fd = sockfd;
+	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) {
+		return perror("epoll_ctl"), 1;
+	}
+	if ((newsockfd = accept(sockfd, NULL, NULL)) == -1) {
+		return perror("accept"), 1;
+	}
+	while (1)
+	{
+		if ((nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1) {
+			return perror("epoll_wait"), 1;
+		}
+//		memset(buffer, 0, sizeof(char) * MAX_BUFLEN);
+//		if ((bytes_recv = recv(newsockfd, buffer, MAX_BUFLEN - 1, 0)) == -1)
+//			return perror("recv"), 1;
+//		bytes_sent = send(newsockfd, message.c_str(), message.size(), 0);
+//		std::cout << "message received: " << buffer << std::endl;
+	}
+
+	delete [] buffer;
+	freeaddrinfo(res);
+	close(newsockfd);
+	close(sockfd);
+}

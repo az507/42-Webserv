@@ -1,0 +1,141 @@
+#include "webserv.hpp"
+
+void	ft_perror(const char *s)
+{
+	std::cerr << s << ": (" << errno << ") " << strerror(errno) << '\n';
+	errno = 0;
+}
+
+void	ft_error(const char *s)
+{
+	std::cerr << s << '\n';
+}
+
+int	main(int argc, char *argv[])
+{
+	if (argc < 3)
+		return 0;
+
+	pid_t	pid = fork();
+
+	if (pid == -1)
+		ft_perror("fork");
+	if (!pid)
+	{
+		sleep(4);
+		int		status, sockfd;
+		struct addrinfo	hints;
+		struct addrinfo	*res;
+		std::string	message;
+		std::ifstream	infile(argv[1]);
+		ssize_t		bytes_sent;
+		std::ptrdiff_t	offset;
+		ssize_t		msg_len;
+		int		optval = 1;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+
+		if ((status = getaddrinfo("127.0.0.1", "2520", &hints, &res)) != 0)
+			return (std::cerr << "getaddrinfo error: " << gai_strerror(status) << '\n', 1);
+		if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
+			return (ft_perror("socket"), 1);
+		if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1)
+			return (ft_perror("connect"), 1);
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
+			return ft_perror("setsockopt"), 1;
+
+		while (getline(infile, message))
+		{
+			if (!infile.eof())
+				message.append(1,'\n');
+			offset = 0;
+			msg_len = message.size();
+//			do {
+//				msg_len -= bytes_sent;
+//				offset += bytes_sent;
+//
+//			} while ((bytes_sent = send(sockfd, message.c_str() + offset, msg_len, 0)) != 0
+//				&& bytes_sent != (ssize_t)message.size());
+			while (msg_len)
+			{
+				bytes_sent = send(sockfd, message.c_str() + offset, msg_len, 0);
+				if (bytes_sent == -1)
+					return ft_perror("send"), 1;
+				else {
+					offset += bytes_sent;
+					msg_len -= bytes_sent;
+				}
+			}
+		}
+
+		close(sockfd);
+		freeaddrinfo(res);
+		infile.close();
+	}
+	else
+	{
+		int		status, sockfd, newsockfd;
+		char		*buffer = new char[1024]();
+		struct addrinfo	hints, *res;
+		struct sockaddr_storage	addr;
+		socklen_t	addrlen = sizeof(addr);
+		std::ofstream	outfile(argv[2]);
+		ssize_t		bytes_recv = 0;
+		ssize_t		buf_len;
+		bool		break_flag = false;
+		//std::ptrdiff_t	offset;
+		int		offset, optval = 1;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags = AI_PASSIVE;
+
+		if ((status = getaddrinfo(NULL, "2520", &hints, &res)) != 0)
+			return std::cerr << "getaddrinfo error: " << gai_strerror(status) << '\n', 1;
+		if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
+			return ft_perror("socket"), 1;
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1)
+			return ft_perror("setsockopt"), 1;
+		if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1)
+			return ft_perror("bind"), 1;
+		if (listen(sockfd, 5) == -1)
+			return ft_perror("listen"), 1;
+
+		memset(&addr, 0, sizeof(addr));
+		if ((newsockfd = accept(sockfd, (struct sockaddr *)&addr, &addrlen)) == -1)
+			return ft_perror("accept"), 1;
+
+		while (1)
+		{
+			memset(buffer, 0, sizeof(char) * 1024);
+			offset = 0;
+			buf_len = 1023;
+			while (buf_len)
+			{
+				bytes_recv = recv(newsockfd, buffer + offset, buf_len, 0);
+				if (!bytes_recv) {
+					break_flag = true; break ;
+				} else if (bytes_recv == -1)
+					return ft_perror("recv"), 1;
+				else {
+					offset += bytes_recv;
+					buf_len -= bytes_recv;
+				}
+			}
+			outfile << buffer;
+			if (break_flag)
+				break ;
+		}
+
+		freeaddrinfo(res);
+		close(newsockfd);
+		close(sockfd);
+		delete [] buffer;
+		waitpid(pid, NULL, 0);
+		outfile.close();
+		std::cout << "parent process exiting" << std::endl;
+	}
+}
