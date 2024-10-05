@@ -15,8 +15,7 @@
 # include <unistd.h>
 # include <errno.h>
 
-# define HTTP_PORT 80
-# define MAX_BUFLEN 50
 # define MAX_EVENTS 10
+# define BUFFER_SIZE 100
 
 #endif
