@@ -20,14 +20,14 @@ struct	parser {
 	int (*func)(struct parser *p);
 };
 
-void	ft_perror(const char *err) {
+void ft_perror(const char *err) {
 	if (errno) {
 		std::cerr << err << ": " << strerror(errno) << '\n';
 		errno = 0;
 	}
 }
 
-//void	parse(std::list<std::pair<char *, size_t> >& buflist) {
+//void parse(std::list<std::pair<char *, size_t> >& buflist) {
 //
 //}
 
@@ -48,12 +48,17 @@ void read_from_client(int fd) {
 	while (1) {
 		buf = new char[BUFFER_SIZE + 1]();
 		bytes_recv = recv(fd, buf, BUFFER_SIZE, MSG_DONTWAIT);
-		if (bytes_recv <= 0) { // client closed the socketfd || this recv op would have blocked if MSG_DONTWAIT was not set
+		if (bytes_recv <= 0) { // client closed the socketfd
+				//|| this recv op would have blocked if MSG_DONTWAIT was not set
 			delete [] buf;
+//			if (!bytes_recv) {
+//				close(fd);
+//			}
 			return ;
 		}
 	}
-	for (std::list<std::pair<char *, size_t> >::iterator it = buflist.begin(); it != buflist.end(); ++it) {
+	for (std::list<std::pair<char *, size_t> >::iterator it = buflist.begin(); it != buflist.end(); ++it)
+	{
 		std::cout << it->first;
 		delete [] it->first;
 	}
@@ -62,13 +67,13 @@ void read_from_client(int fd) {
 
 int	main(void) {
 	struct addrinfo hints, *res;
-	struct epoll_event ev, events[CLIENTS_MAX];
-	int err, sockfd, epollfd, nfds, connfd;
+	struct epoll_event	ev, events[CLIENTS_MAX];
+	int err, sockfd, optval = 1, epollfd, nfds, connfd;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	err = getaddrinfo(NULL, "80", &hints, &res);
+	err = getaddrinfo(NULL, "8080", &hints, &res);
 	if (err) {
 		return std::cerr << "getaddrinfo: " << gai_strerror(err) << '\n', 1;
 	}
@@ -76,26 +81,32 @@ int	main(void) {
 	if (sockfd == -1) {
 		return ft_perror("socket"), 1;
 	}
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+		return ft_perror("setsockopt"), 1;
+	}
 	if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
 		return ft_perror("bind"), 1;
 	}
-	if (listen(sockfd, CLIENTS_MAX) == -1) {
+	if (listen(sockfd, 5) == -1) {
 		return ft_perror("listen"), 1;
 	}
 	epollfd = epoll_create(1);
 	if (epollfd == -1) {
 		return ft_perror("epoll_create"), 1;
 	}
+	memset(&ev, 0, sizeof(ev));
 	ev.events = EPOLLIN;
 	ev.data.fd = sockfd;
 	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) {
 		return ft_perror("epoll_ctl"), 1;
 	}
 	while (1) {
+		std::cout << "Before" << std::endl;
 		nfds = epoll_wait(epollfd, events, CLIENTS_MAX, -1);
 		if (nfds == -1) {
 			return ft_perror("epoll_wait"), 1;
 		}
+		std::cout << "After" << std::endl;
 		for (int i = 0; i < nfds; ++i) {
 			if (events[i].data.fd == sockfd) {
 				connfd = accept(sockfd, NULL, NULL);
