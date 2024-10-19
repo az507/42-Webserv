@@ -9,8 +9,11 @@ VPATH	= $(sort $(dir $(SRCS)))
 
 all:	$(NAME)
 
+abc:
+	$(CC) $(CFLAGS) abc.cpp -o $(NAME)
+
 test:
-	c++ -Wall -Werror -Wextra -std=c++98 -g test.cpp
+	$(CC) $(CFLAGS) test.cpp -o $(NAME)
 
 $(NAME):$(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(NAME) $(LFLAGS)

@@ -15,12 +15,12 @@ void	read_fd(int fd) {
 			close(fd);
 			break ;
 		}
-		strbuf << buffer;
+		//strbuf << buffer;
 		//std::cout << "bytes_recv = " << bytes_recv << std::endl;
-		std::cout << buffer;// << std::endl;
+		std::cout << buffer;
 	}
 	std::cout << std::endl;
-	std::cout << "strbuf.str() = " << strbuf.str() << std::endl;
+	//std::cout << "strbuf.str() = " << strbuf.str() << std::endl;
 }
 
 int	main(void) {
