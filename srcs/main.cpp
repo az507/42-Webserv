@@ -1,86 +1,214 @@
 #include "webserv.hpp"
 
-void	read_fd(int fd) {
-	ssize_t	bytes_recv;
-	char buffer[BUFFER_SIZE];
-	std::string message("This is a message.\n");
-	std::stringstream strbuf;
-
-	for (int i = 1; ; ++i) {
-		memset(buffer, 0, BUFFER_SIZE);
-		bytes_recv = recv(fd, buffer, BUFFER_SIZE - 1, MSG_DONTWAIT);
-		if (bytes_recv <= 0) {
-			perror("recv");
-			send(fd, message.c_str(), message.size(), MSG_DONTWAIT);
-			close(fd);
-			break ;
-		}
-		//strbuf << buffer;
-		//std::cout << "bytes_recv = " << bytes_recv << std::endl;
-		std::cout << buffer;
-	}
-	std::cout << std::endl;
-	//std::cout << "strbuf.str() = " << strbuf.str() << std::endl;
-}
-
-int	main(void) {
-	struct addrinfo	hints, *res;
-	struct epoll_event	ev, events[MAX_EVENTS];
-	int	err, sockfd, optval = 1, epollfd, nfds, newsockfd;
+int	setup_socket(const char *node, const char *service) {
+	struct addrinfo hints, *res;
+	int err, sockfd, optval = 1;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	err = getaddrinfo(NULL, "8080", &hints, &res);
-	if (err) {
-		return std::cerr << "getaddrinfo error: " << gai_strerror(err) << '\n', 1;
+
+	if ((err = getaddrinfo(node, service, &hints, &res))) {
+		return std::cerr << "getaddrinfo: " << gai_strerror(err) << '\n', -1; // critical
 	}
-	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-	if (sockfd == -1) {
-		return perror("sockfd"), 1;
+
+	for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+			perror("socket");
+			continue ;
+		}
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+			handle_error("setsockopt"); // critical
+		}
+		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			perror("bind");
+			close(sockfd);
+			continue ;
+		}
+		break ;
 	}
-	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
-		return perror("setsockopt"), 1;
+	freeaddrinfo(res);
+	return sockfd;
+}
+
+char *read_http_request(int fd) {
+	std::ptrdiff_t offset;
+	std::list<std::pair<char *, ssize_t> > buflst;
+	char *buf;
+	ssize_t bytes;
+
+	while (1) {
+		offset = 0;
+		buf = new char[BUFFER_SIZE + 1]();
+		while (offset < BUFFER_SIZE) {
+			bytes = recv(fd, buf + offset, BUFFER_SIZE - offset, MSG_DONTWAIT);
+			if (bytes <= 0) {
+				if (!bytes) { // connection closed by client
+					close(fd);
+					delete [] buf;
+					for (std::list<std::pair<char *, ssize_t> >::iterator it = buflst.begin(); it != buflst.end(); ++it) {
+						delete [] it->first;
+					}
+					return NULL;
+				}
+				break ;
+			}
+			offset += bytes;
+			buflst.push_back(std::make_pair(buf, bytes));
+		}
+		if (bytes == -1) {
+			break ;
+		}
 	}
-	if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
-		return perror("bind"), 1;
+	offset = bytes = 0;
+	for (std::list<std::pair<char *, ssize_t> >::const_iterator it = buflst.begin(); it != buflst.end(); ++it) {
+		bytes += it->second;
 	}
-	if (listen(sockfd, 5) == -1) {
-		return perror("listen"), 1;
+	buf = new char[bytes + 1];
+	for (std::list<std::pair<char *, ssize_t> >::iterator it = buflst.begin(); it != buflst.end(); ++it) {
+		strncpy(buf + offset, it->first, it->second);
+		delete [] it->first;
 	}
-	epollfd = epoll_create(1);
-	if (epollfd == -1) {
-		return perror("epoll_create"), 1;
+	buf[bytes] = '\0';
+	return buf;
+}
+
+struct HttpRequest {
+	char *buf, *msg_body;
+	std::vector<std::string> info; // info[0] = method, [1] = target, [2] = http version no.
+	std::map<std::string, std::string> headers;
+};
+
+HttpRequest parse_http_request(char *buffer) {
+	bool first = true;
+	char *startl = buffer, *endl, *delim;
+	std::string buf;
+	HttpRequest data;
+	std::stringstream ss;
+//	std::vector<std::string> info;
+//	std::map<std::string, std::string> headers;
+
+	delim = strstr(buffer, "\r\n\r\n");
+	assert(delim != NULL);
+	*(delim + 3) = '\0';
+	while (1) {
+		endl = strchr(startl, '\n');
+		if (!endl)
+			break ;
+		*endl = '\0';
+		ss.str(startl);
+		assert(ss >> buf);
+		if (first) {
+			do {
+				data.info.push_back(buf);
+				ss.str(ss.str().c_str() + buf.length() + 1);
+			} while (ss >> buf);
+			first = false;
+		} else {
+			data.headers[buf] = std::string(ss.str().c_str() + buf.length() + 1);
+		}
+		ss.str("");
+		ss.clear();
+		startl = endl + 1;
 	}
+//	for (std::vector<std::string>::const_iterator it = data.info.begin(); it != data.info.end(); ++it) {
+//		std::cout << *it << ' ';
+//	}
+//	std::cout << std::endl;
+//	for (std::map<std::string, std::string>::const_iterator it = data.headers.begin(); it != data.headers.end(); ++it) {
+//		std::cout << it->first << ", " << it->second << std::endl;
+//	}
+	data.buf = buffer;
+	data.msg_body = delim + 4;
+	return data;
+}
+
+// need to figure out which virtual server will serve this request
+void send_http_response(int fd, char *envp[]) {
+	(void)envp;
+	ssize_t bytes;
+	std::ptrdiff_t offset = 0;
+	std::stringstream ss;
+	struct stat statbuf;
+	//const char *filename = "/home/achak/Documents/webserv/index.html";
+	const char *filename = "/home/achak/index.html";
+	char *filebuf;
+	std::ifstream infile(filename);
+
+	if (stat(filename, &statbuf) == -1)
+		handle_error("stat");
+	filebuf = new char[statbuf.st_size + 1]();
+	infile.read(filebuf, statbuf.st_size);
+	std::cout << "filesize: " << statbuf.st_size << std::endl;
+	ss << "HTTP/1.1 200 OK\n\n";
+	//ss << "Content-Type: text/html\n\n"; // html forms can fill this line for us alr, including this can cause the browser to mistakenly intepret the html form as text
+	ss << filebuf;
+//	for (int i = 0; envp[i] != NULL; ++i)
+//		ss << envp[i] << '\n';
+	while ((size_t)offset < ss.str().length()) {
+		bytes = send(fd, ss.str().c_str() + offset, ss.str().length() - offset, MSG_DONTWAIT);
+		if (bytes <= 0) {
+			assert(bytes != -1);
+			if (!bytes) {
+				close(fd); // client closed connection
+				delete [] filebuf;
+				return ;
+			}
+		}
+		offset += bytes;
+	}
+	delete [] filebuf;
+	close(fd);
+}
+
+int	main(int argc, char *argv[], char *envp[]) {
+	(void)argc;
+	(void)argv;
+	(void)envp;
+	char *request;
+	int sockfd, epfd, nfds, connfd;
+	struct HttpRequest data;
+	struct epoll_event ev, events[MAX_EVENTS];
+
+	if (argc != 2 || !argv[1][0])
+		return std::cerr << "Usage: " << argv[0] << " <filename>\n", 1;
+	if (!parseConfigFile(argv[1]))
+		return 1;
+	sockfd = setup_socket(NULL, "8080");
+	if (sockfd == -1)
+		return 1;
+	if (listen(sockfd, LISTEN_BACKLOG) == -1)
+		handle_error("listen");
+	epfd = epoll_create(1);
+	if (epfd == -1)
+		handle_error("epoll_create");
 	ev.events = EPOLLIN;
 	ev.data.fd = sockfd;
-	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) {
-		return perror("1) epoll_ctl"), 1;
-	}
+	if (epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev) == -1)
+		handle_error("epoll_ctl");
 	while (1) {
-		std::cout << "One iteration" << std::endl;
-		nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
-		if (nfds == -1) {
-			return perror("epoll_wait"), 1;
-		}
+		nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
+		if (nfds == -1)
+			handle_error("epoll_wait");
 		for (int i = 0; i < nfds; ++i) {
 			if (events[i].data.fd == sockfd) {
-				newsockfd = accept(sockfd, NULL, NULL);
-				if (newsockfd == -1) {
-					return perror("accept"), 1;
-				}
+				connfd = accept(sockfd, NULL, NULL);
+				if (connfd == -1)
+					handle_error("accept");
 				ev.events = EPOLLIN | EPOLLET;
-				ev.data.fd = newsockfd;
-				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, newsockfd, &ev) == -1) {
-					return perror("2) epoll_ctl"), 1;
-				}
+				ev.data.fd = connfd;
+				if (epoll_ctl(epfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
+					handle_error("epoll_ctl");
 			} else {
-				read_fd(events[i].data.fd);
+				request = read_http_request(events[i].data.fd);
+				if (!request)
+					continue ;
+				std::cout << request << "\n\n\n" << std::endl;
+				data = parse_http_request(request);
+				send_http_response(events[i].data.fd, envp);
+				return 0;
 			}
 		}
 	}
-	freeaddrinfo(res);
-	close(sockfd);
-	close(epollfd);
 }

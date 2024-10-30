@@ -1,6 +1,9 @@
 #ifndef WEBSERV_HPP
 #define WEBSERV_HPP
 
+# include <map>
+# include <list>
+# include <vector>
 # include <iostream>
 # include <sstream>
 # include <fstream>
@@ -8,8 +11,10 @@
 # include <cstring>
 # include <cstdlib>
 # include <cstdio>
+# include <cassert>
 # include <arpa/inet.h>
 # include <sys/types.h>
+# include <sys/stat.h>
 # include <sys/wait.h>
 # include <sys/socket.h>
 # include <sys/epoll.h>
@@ -18,28 +23,9 @@
 # include <errno.h>
 
 # define MAX_EVENTS 10
-# define BUFFER_SIZE 100
-
-/*
-class HttpPacket {
-	public:
-		HttpPacket(std::stringstream& strbuf) {
-			std::string key, value;
-			std::getline(strbuf, this->startLine);
-			while (1) {
-				if (!std::getline(strbuf, key, " ")
-					|| !std::getline(strbuf, value)) {
-					throw std::runtime_error("parsing error");
-				}
-				this->headerFields[key] = value;
-			}
-
-		}
-	private:
-		std::map<std::string, std::string>	headerFields;
-		std::string				startLine, messageBody;
-		int					messageLen;
-};
-*/
+# define BUFFER_SIZE 8092
+# define LISTEN_BACKLOG 50
+# define handle_error(msg) \
+	do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 #endif
