@@ -17,7 +17,7 @@
 #include <netdb.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 1024
 #define CLIENTS_MAX 10
 
 struct	parser {
@@ -148,18 +148,22 @@ void	read_from_client(int fd) {
 	ssize_t bytes;
 	char *buf = NULL, *newbuf, *tmp;
 	while (1) {
+		std::cerr << "in here\n";
 		newbuf = new char[BUFFER_SIZE + 1];
 		bytes = recv(fd, newbuf, BUFFER_SIZE, MSG_DONTWAIT);
+		perror("recv");
+		std::cout << newbuf;
 		if (bytes <= 0) { // client closed the socketfd
 				//|| this recv op would have blocked if MSG_DONTWAIT was not set
 			delete [] buf;
 			delete [] newbuf;
 			if (!bytes) {
 				close(fd);
-				//throw 1;
 			}
+			std::cerr << "in here 1\n";
 			break ;
 		}
+		std::cerr << "in here 2\n";
 		if (!buf) {
 			buf = newbuf;
 			buf[bytes] = '\0';
