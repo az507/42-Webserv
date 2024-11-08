@@ -134,7 +134,7 @@ void send_to_client(int fd, char *envp[]) {
 		if (!infile.eof()) {
 			msg.append(1, '\n');
 		}
-		std::cout << msg;
+		//std::cout << msg;
 		send(fd, msg.c_str(), msg.size(), 0);
 	}
 }
