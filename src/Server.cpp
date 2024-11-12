@@ -15,17 +15,13 @@
 Server::Server(int port)
 {
     initsocket(port);
+    initepoll();
 }
 
 Server::~Server()
 {
     close(serversocket);
+
 }
 
-void Server::run()
-{
-    while (1)
-    {
-        handleconnections();
-    }
-}
+void serv

@@ -19,7 +19,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <iostream>
-#include <poll.h>
+#include <sys/epoll.h>
 #include <vector>
 
 class Server
@@ -31,10 +31,11 @@ class Server
     
     private:
         int serversocket;
-        std::vector<struct pollfd> connections;
+        int epollfd;
         struct sockaddr_in address;
 
         void initsocker(int port);
+        void initepoll();
         void handleconnections();
         void handlerequest(int clientsocket);
 };
