@@ -13,8 +13,30 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include <sys/socket.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <iostream>
+#include <poll.h>
+#include <vector>
 
+class Server
+{
+    public:
+        Server(int port);
+        ~Server();
+        void run();
+    
+    private:
+        int serversocket;
+        std::vector<struct pollfd> connections;
+        struct sockaddr_in address;
 
-
+        void initsocker(int port);
+        void handleconnections();
+        void handlerequest(int clientsocket);
+};
 
 #endif
