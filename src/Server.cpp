@@ -22,3 +22,10 @@ Server::~Server()
     close(serversocket);
 }
 
+void Server::run()
+{
+    while (1)
+    {
+        handleconnections();
+    }
+}
