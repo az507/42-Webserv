@@ -14,14 +14,15 @@
 
 Server::Server(int port)
 {
-    initsocket(port);
+    initsocker(port);
     initepoll();
+    
 }
 
 Server::~Server()
 {
     close(serversocket);
-
+    close(epollfd);
 }
 
 void serv
