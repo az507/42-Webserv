@@ -6,14 +6,14 @@
 #    By: xzhang <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/11/11 17:52:33 by xzhang            #+#    #+#              #
-#    Updated: 2024/11/12 11:10:46 by achak            ###   ########.fr        #
+#    Updated: 2024/11/13 15:07:37 by achak            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
-SRCS = main.cpp ConfigFile.cpp
+SRCS = main.cpp src/ConfigFile.cpp
 CPP = c++
-CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -g -fsanitize=address
+CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g -fsanitize=address
 OBJS = $(SRCS:.cpp=.o)
 DEP	= $(OBJS:.o=.d)
 REMOVE = rm -f
