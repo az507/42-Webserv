@@ -40,10 +40,14 @@ struct ServerInfo {
     std::vector<std::pair<std::string, std::string> > ip_addrs;
 };
 
+std::ostream& operator<<(std::ostream&, const RouteInfo&);
+std::ostream& operator<<(std::ostream&, const ServerInfo&);
+
 class ConfigFile {
     public:
         explicit ConfigFile(const char *);
         void printServerInfo() const;
+        std::vector<ServerInfo> getServerInfo() const;
     private:
         enum TokenType {
             LISTEN = 0,

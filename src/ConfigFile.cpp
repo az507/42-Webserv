@@ -24,13 +24,13 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
                     servers.push_back((ServerInfo){});
                 } else if (!line.compare(0, 8, "location")) {
                     servers.at(servers.size() - 1).routes.push_back((RouteInfo){});
-                    servers.back().routes.back().prefix_str = line.substr(9);
+                    servers.back().routes.back().prefix_str = line.substr(8);
                 } else {
                     throw std::runtime_error(std::string("Unexpected token: ") + line);
                 }
             } else {
                 line.erase(std::remove_if(line.begin(), line.begin() + pos, &isspace), line.begin() + pos);
-                token = line.substr(0, line.find('='));
+                token = line.substr(0, pos = line.find('='));
                 ss.str(line.c_str() + pos + 1);
                 token_type = std::find_if(keywords.begin(), keywords.end(), std::bind2nd(std::equal_to<std::string>(), token)) - keywords.begin();
                 if (token_type == ERROR) {
@@ -72,14 +72,14 @@ std::ostream& operator<<(std::ostream& os, const RouteInfo& route) {
 
 std::ostream& operator<<(std::ostream& os, const ServerInfo& serv) {
 
-    os << "===ServerInfo===\n";
-    std::copy(serv.names.begin(), serv.names.end(), std::ostream_iterator<std::string>(os << "server_names: ", ", "));
+    os << "===ServerInfo===\nserver_names: ";
+    std::copy(serv.names.begin(), serv.names.end(), std::ostream_iterator<std::string>(os, ", "));
     os.put('\n');
     os << "Ip-addresses: ";
     for (std::vector<std::pair<std::string, std::string> >::const_iterator it = serv.ip_addrs.begin(); it != serv.ip_addrs.end(); ++it) {
         os << "-->" << it->first << ':' << it->second << '\n' << std::setw(17);
     }
-    std::copy(serv.routes.begin(), serv.routes.end(), std::ostream_iterator<RouteInfo>(os << std::right, "\n"));
+    std::copy(serv.routes.begin(), serv.routes.end(), std::ostream_iterator<RouteInfo>(os, "\n"));
     return os;
 }
 
@@ -91,6 +91,11 @@ void ConfigFile::printServerInfo() const {
         std::cout << it->first << " => " << it->second << '\n' << std::setw(17);
     }
     std::copy(servers.begin(), servers.end(), std::ostream_iterator<ServerInfo>(std::cout << '\n'));
+}
+
+std::vector<ServerInfo> ConfigFile::getServerInfo() const {
+
+    return servers;
 }
 
 void *ConfigFile::convertIdxToAddr(int idx) {
@@ -190,10 +195,8 @@ void ConfigFile::defaultStringHandler(const std::vector<std::string>& values, vo
 }
 
 void ConfigFile::defaultVectorHandler(const std::vector<std::string>& values, void *addr) {
-    std::vector<std::string> *vec;
-   
-    vec = reinterpret_cast<std::vector<std::string> *>(addr);
-    vec->insert(vec->end(), values.begin(), values.end());
+
+    std::copy(values.begin(), values.end(), std::back_inserter(*(reinterpret_cast<std::vector<std::string> *>(addr))));
 }
 
 std::vector<void(ConfigFile::*)(const std::vector<std::string>&, void *)> ConfigFile::initSetters() const {
@@ -210,7 +213,6 @@ std::vector<void(ConfigFile::*)(const std::vector<std::string>&, void *)> Config
     setters[8] = &ConfigFile::defaultStringHandler;
     setters[9] = &ConfigFile::defaultStringHandler;
     setters[10] = &ConfigFile::defaultStringHandler;
-
     return setters;
 }
 
@@ -228,7 +230,6 @@ std::vector<std::string> ConfigFile::initKeywords() const {
     keywords[8] = "index";
     keywords[9] = "cgi_extension";
     keywords[10] = "upload_store";
-    
     return keywords;
 }
 
