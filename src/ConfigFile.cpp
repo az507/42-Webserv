@@ -1,0 +1,238 @@
+#include "ConfigFile.hpp"
+
+int ServerInfo::max_clients;
+std::map<int, std::string> ServerInfo::error_pages;
+
+ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKeywords()), setters(initSetters()) {
+    size_t pos;
+    int token_type;
+    std::stringstream ss;
+    std::string line, token;
+    std::vector<std::string> values;
+
+    if (!infile.is_open()) {
+        throw std::invalid_argument(std::string(filename) + ": " + strerror(errno));
+    }
+    while (!getline(infile, line).eof()) {
+        if (!infile) {
+            infile.exceptions(infile.rdstate());
+        } else if (!line.empty() && line.find_first_not_of(" \t\n\v\f\r") != std::string::npos) {
+            pos = line.find('=');
+            if (pos == std::string::npos) {
+                line.erase(std::remove_if(line.begin(), line.end(), &isspace), line.end());
+                if (line == "server") {
+                    servers.push_back((ServerInfo){});
+                } else if (!line.compare(0, 8, "location")) {
+                    servers.at(servers.size() - 1).routes.push_back((RouteInfo){});
+                    servers.back().routes.back().prefix_str = line.substr(8);
+                } else {
+                    throw std::runtime_error(std::string("Unexpected token: ") + line);
+                }
+            } else {
+                line.erase(std::remove_if(line.begin(), line.begin() + pos, &isspace), line.begin() + pos);
+                token = line.substr(0, pos = line.find('='));
+                ss.str(line.c_str() + pos + 1);
+                token_type = std::find_if(keywords.begin(), keywords.end(), std::bind2nd(std::equal_to<std::string>(), token)) - keywords.begin();
+                if (token_type == ERROR) {
+                    throw std::runtime_error(std::string("invalid token: ") + token);
+                } else if (servers.empty()) {
+                    throw std::runtime_error("Declare a server context first");
+                } else if (token_type >= HTTP_METHODS && servers.back().routes.empty()) {
+                    throw std::runtime_error("Declare a location context first");
+                }
+                std::copy(std::istream_iterator<std::string>(ss), std::istream_iterator<std::string>(), std::back_inserter(values));
+                (this->*setters[token_type])(values, convertIdxToAddr(token_type));
+                values.clear();
+                ss.clear();
+                ss.str("");
+            }
+        }
+    }
+}
+
+std::ostream& operator<<(std::ostream& os, const RouteInfo& route) {
+
+    os << std::setw(20) << "===RouteInfo===\n";
+    os << std::setw(20) << "dir_list: " << std::boolalpha << route.dir_list << '\n';
+    os << std::setw(20) << "http_methods: ";
+    if (route.http_methods & GET_METHOD)
+        os << "GET, ";
+    if (route.http_methods & POST_METHOD)
+        os << "POST, ";
+    if (route.http_methods & DELETE_METHOD)
+        os << "DELETE";
+    os.put('\n');
+    os << std::setw(20) << "root: " << route.root << '\n';
+    os << std::setw(20) << "dfl_file: " << route.dfl_file << '\n';
+    os << std::setw(20) << "upload_dir: " << route.upload_dir << '\n';
+    os << std::setw(20) << "prefix_str: " << route.prefix_str << '\n';
+    os << std::setw(20) << "cgi_extension: " << route.cgi_extension << '\n';
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const ServerInfo& serv) {
+
+    os << "===ServerInfo===\nserver_names: ";
+    std::copy(serv.names.begin(), serv.names.end(), std::ostream_iterator<std::string>(os, ", "));
+    os.put('\n');
+    os << "Ip-addresses: ";
+    for (std::vector<std::pair<std::string, std::string> >::const_iterator it = serv.ip_addrs.begin(); it != serv.ip_addrs.end(); ++it) {
+        os << "-->" << it->first << ':' << it->second << '\n' << std::setw(17);
+    }
+    std::copy(serv.routes.begin(), serv.routes.end(), std::ostream_iterator<RouteInfo>(os, "\n"));
+    return os;
+}
+
+void ConfigFile::printServerInfo() const {
+
+    std::cout << "max_clients: " << ServerInfo::max_clients << '\n';
+    std::cout << "error_pages: " << std::setw(4);
+    for (std::map<int, std::string>::const_iterator it = ServerInfo::error_pages.begin(); it != ServerInfo::error_pages.end(); ++it) {
+        std::cout << it->first << " => " << it->second << '\n' << std::setw(17);
+    }
+    std::copy(servers.begin(), servers.end(), std::ostream_iterator<ServerInfo>(std::cout << '\n'));
+}
+
+std::vector<ServerInfo> ConfigFile::getServerInfo() const {
+
+    return servers;
+}
+
+void *ConfigFile::convertIdxToAddr(int idx) {
+
+    switch (idx) {
+        case LISTEN:        return reinterpret_cast<void *>(&servers.back().ip_addrs);
+        case SERVER_NAME:   return reinterpret_cast<void *>(&servers.back().names);
+        case ERROR_PAGE:    return reinterpret_cast<void *>(&ServerInfo::error_pages);
+        case CLIENT_MAX:    return reinterpret_cast<void *>(&ServerInfo::max_clients);
+        case HTTP_METHODS:  return reinterpret_cast<void *>(&servers.back().routes.back().http_methods);
+        case REDIRECT:      return reinterpret_cast<void *>(&servers.back().routes.back().redirect);
+        case ROOT:          return reinterpret_cast<void *>(&servers.back().routes.back().root);
+        case DIR_LIST:      return reinterpret_cast<void *>(&servers.back().routes.back().dir_list);
+        case DFL_FILE:      return reinterpret_cast<void *>(&servers.back().routes.back().dfl_file);
+        case CGI_EXTENSION: return reinterpret_cast<void *>(&servers.back().routes.back().cgi_extension);
+        case UPLOAD_DIR:    return reinterpret_cast<void *>(&servers.back().routes.back().upload_dir);
+    }
+    return assert(false), reinterpret_cast<void *>(NULL);
+}
+
+void ConfigFile::dirListHandler(const std::vector<std::string>& values, void *addr) {
+
+    *(reinterpret_cast<bool *>(addr)) = values.back() == "on" ? true : false;
+}
+
+void ConfigFile::httpMethodsHandler(const std::vector<std::string>& values, void *addr) {
+    int *ptr;
+    std::vector<std::string>::const_iterator ite = values.end();
+
+    *(ptr = reinterpret_cast<int *>(addr)) = 0;
+    for (std::vector<std::string>::const_iterator it = values.begin(); it != ite; ++it) {
+        if (*it == "GET") {
+            *ptr |= GET_METHOD;
+        } else if (*it == "POST") {
+            *ptr |= POST_METHOD;
+        } else if (*it == "DELETE") {
+            *ptr |= DELETE_METHOD;
+        }
+    }
+}
+
+void ConfigFile::errorPageHandler(const std::vector<std::string>& values, void *addr) {
+    int error_nbr;
+    std::map<int, std::string> *ptr;
+    std::vector<std::string>::const_iterator p;
+
+    if (values.size() < 2) {
+        throw std::invalid_argument("not enough arguments for error_page directive");
+    }
+    ptr = reinterpret_cast<std::map<int, std::string> *>(addr);
+    for (std::vector<std::string>::const_iterator it = values.begin(); it != values.end(); ++it) {
+        for (p = it; p != values.end(); ++p) {
+            if (p->find('/') != std::string::npos) {
+                break ;
+            }
+        }
+        for ( ; it != p; ++it) {
+            error_nbr = atoi(it->c_str());
+            if (!ptr->count(error_nbr)) {
+                ptr->operator[](error_nbr) = *p;
+            } else {
+                std::cerr << error_nbr << " already exists in error_pages map\n";
+            }
+        }
+    }
+}
+
+void ConfigFile::maxClientsHandler(const std::vector<std::string>& values, void *addr) {
+
+    *(reinterpret_cast<int *>(addr)) = atoi(values.back().c_str());
+}
+
+void ConfigFile::ipAddrsHandler(const std::vector<std::string>& values, void *addr) {
+    size_t findpos1, findpos2;
+    std::vector<std::pair<std::string, std::string> > *ptr;
+    std::vector<std::string>::const_iterator ite = values.end();
+
+    ptr = reinterpret_cast<std::vector<std::pair<std::string, std::string> > *>(addr);
+    for (std::vector<std::string>::const_iterator it = values.begin(); it != ite; ++it) {
+        findpos1 = it->find(':');
+        findpos2 = it->find('.');
+        if (findpos1 == std::string::npos) {
+            if (findpos2 == std::string::npos) {
+                ptr->push_back(std::make_pair("", *it));
+            } else {
+                ptr->push_back(std::make_pair(*it, ""));
+            }
+        } else {
+            ptr->push_back(std::make_pair(it->substr(0, findpos1), it->substr(findpos1 + 1)));
+        }
+    }
+}
+
+void ConfigFile::defaultStringHandler(const std::vector<std::string>& values, void *addr) {
+
+    *(reinterpret_cast<std::string *>(addr)) = values.back();
+}
+
+void ConfigFile::defaultVectorHandler(const std::vector<std::string>& values, void *addr) {
+
+    std::copy(values.begin(), values.end(), std::back_inserter(*(reinterpret_cast<std::vector<std::string> *>(addr))));
+}
+
+std::vector<void(ConfigFile::*)(const std::vector<std::string>&, void *)> ConfigFile::initSetters() const {
+    std::vector<void(ConfigFile::*)(const std::vector<std::string>&, void *)> setters(11);
+
+    setters[0] = &ConfigFile::ipAddrsHandler;
+    setters[1] = &ConfigFile::defaultVectorHandler;
+    setters[2] = &ConfigFile::errorPageHandler;
+    setters[3] = &ConfigFile::maxClientsHandler;
+    setters[4] = &ConfigFile::httpMethodsHandler;
+    setters[5] = &ConfigFile::defaultStringHandler;
+    setters[6] = &ConfigFile::defaultStringHandler;
+    setters[7] = &ConfigFile::dirListHandler;
+    setters[8] = &ConfigFile::defaultStringHandler;
+    setters[9] = &ConfigFile::defaultStringHandler;
+    setters[10] = &ConfigFile::defaultStringHandler;
+    return setters;
+}
+
+std::vector<std::string> ConfigFile::initKeywords() const {
+    std::vector<std::string> keywords(11);
+
+    keywords[0] = "listen";
+    keywords[1] = "server_name";
+    keywords[2] = "error_page";
+    keywords[3] = "client_max_body_size";
+    keywords[4] = "http_methods";
+    keywords[5] = "return";
+    keywords[6] = "root";
+    keywords[7] = "autoindex";
+    keywords[8] = "index";
+    keywords[9] = "cgi_extension";
+    keywords[10] = "upload_store";
+    return keywords;
+}
+
+ConfigFile::ConfigFile() {}
+ConfigFile::ConfigFile(const ConfigFile&) {}
+ConfigFile& ConfigFile::operator=(const ConfigFile&) { return *this; }

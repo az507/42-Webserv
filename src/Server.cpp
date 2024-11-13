@@ -56,7 +56,7 @@ void Server::initsocker(int port)
         close(serversocket);
         exit(EXIT_FAILURE);
     }
-    fcntl(serversocket, F_SETFL, O_NONBLOCK);
+
 }
 
 void Server::initepoll()
@@ -102,7 +102,6 @@ void Server::handleconnections()
                 int clientsocket = accept(serversocket, NULL, NULL);
                 if (clientsocket >= 0)
                 {
-                    fcntl(clientsocket, F_SETFL, O_NONBLOCK);
                     struct epoll_event ev;
                     ev.events = EPOLLIN;
                     ev.data.fd = clientsocket;
@@ -127,28 +126,31 @@ void Server::handleconnections()
 }
 
 
-void Server::handlerequest(int clientsocket)
+void Server::handlerequest(int client_socket)
 {
     char buffer[1024];
-    int bytesread = read(clientsocket, buffer, 1024);
-    if (bytesread < 0)
+    int bytesreceived = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+
+    if (bytesreceived > 0)
     {
-        perror("read failed");
-        close(clientsocket);
-        return ;
+        buffer[bytesreceived] = '\0';
+
+        // Simple check for GET request
+        std::string request(buffer);
+        if (request.substr(0, 3) == "GET")
+        {
+            std::string response = "HTTP/1.1 200 OK\r\n"
+                                   "Content-Type: text/html\r\n\r\n"
+                                   "<html><body><h1>Hello, World!</h1></body></html>";
+            send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
+        }
+        // else if (bytesreceived == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        // {
+        //     return ;
+        // } // Non-blocking socket, no data to read but can not  EAGAIN or EWOULDBLOCK
+        else
+        {
+            perror("recv failed");
+        }
     }
-    if (bytesread == 0)
-    {
-        close(clientsocket);
-        return ;
-    }
-    std::string request(buffer, bytesread);
-    std::cout << request << std::endl;
-    std::string response = "HTTP/1.1 200 OK\nContent-Length: 12\n\nHello world!";
-    int byteswritten = write(clientsocket, response.c_str(), response.size());
-    if (byteswritten != (int)response.size())
-    {
-        perror("write failed");
-    }
-    close();
 }
