@@ -77,7 +77,7 @@ std::ostream& operator<<(std::ostream& os, const ServerInfo& serv) {
     os.put('\n');
     os << "Ip-addresses: ";
     for (std::vector<std::pair<std::string, std::string> >::const_iterator it = serv.ip_addrs.begin(); it != serv.ip_addrs.end(); ++it) {
-        os << "--" << it->first << ':' << it->second << '\n' << std::setw(16);
+        os << "-->" << it->first << ':' << it->second << '\n' << std::setw(17);
     }
     std::copy(serv.routes.begin(), serv.routes.end(), std::ostream_iterator<RouteInfo>(os << std::right, "\n"));
     return os;
@@ -135,23 +135,27 @@ void ConfigFile::httpMethodsHandler(const std::vector<std::string>& values, void
 void ConfigFile::errorPageHandler(const std::vector<std::string>& values, void *addr) {
     int error_nbr;
     std::map<int, std::string> *ptr;
-    std::vector<std::string>::const_iterator second_last = values.end() - 1;
+    std::vector<std::string>::const_iterator p;
 
     if (values.size() < 2) {
         throw std::invalid_argument("not enough arguments for error_page directive");
     }
     ptr = reinterpret_cast<std::map<int, std::string> *>(addr);
-    std::find_if(values.begin(), values.end(), std::bind2nd(
-    for (std::vector<std::string>::const_iterator it = values.begin(); it != second_last; ++it) {
+    for (std::vector<std::string>::const_iterator it = values.begin(); it != values.end(); ++it) {
+        for (p = it; p != values.end(); ++p) {
+            if (p->find('/') != std::string::npos) {
+                break ;
+            }
+        }
+        for ( ; it != p; ++it) {
+            error_nbr = atoi(it->c_str());
+            if (!ptr->count(error_nbr)) {
+                ptr->operator[](error_nbr) = *p;
+            } else {
+                std::cerr << error_nbr << " already exists in error_pages map\n";
+            }
+        }
     }
-//    for (std::vector<std::string>::const_iterator it = values.begin(); it != second_last; ++it) {
-//        error_nbr = atoi(it->c_str());
-//        if (!ptr->count(error_nbr)) {
-//            ptr->operator[](error_nbr) = *second_last;
-//        } else {
-//            std::cerr << error_nbr << " already exists in error_pages map\n";
-//        }
-//    }
 }
 
 void ConfigFile::maxClientsHandler(const std::vector<std::string>& values, void *addr) {
