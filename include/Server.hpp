@@ -21,7 +21,8 @@
 #include <iostream>
 #include <sys/epoll.h>
 #include <vector>
-
+#include <fcntl.h>
+#define MAXEVENTS 64
 class Server
 {
     public:
@@ -32,7 +33,7 @@ class Server
     private:
         int serversocket;
         int epollfd;
-        struct sockaddr_in address;
+        struct sockaddr_in serveraddress;
 
         void initsocker(int port);
         void initepoll();
