@@ -134,7 +134,7 @@ void Server::handleconnections()
                 if (clientsocket >= 0)
                 {
                     struct epoll_event ev;
-                    ev.events = EPOLLIN;
+                    ev.events = EPOLLIN | EPOLLET;
                     ev.data.fd = clientsocket;
                     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientsocket, &ev) < 0)
                     {
@@ -145,13 +145,15 @@ void Server::handleconnections()
             }
             else
             {
-                handlerequest(events[i].data.fd);
+                if (events[i].events & EPOLLIN)
+                    handlerequest(events[i].data.fd);
             }
+            close(events[i].data.fd);
             if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
             {
                 perror("epoll_ctl failed");
             }
-            close(events[i].data.fd);
+            
         }
     }
 }
@@ -172,6 +174,7 @@ void Server::handlerequest(int client_socket)
         {
             std::string response = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: text/html\r\n\r\n"
+                                   "connection: close\r\n\r\n"
                                    "<html><body><h1>Hello, World!</h1></body></html>";
             send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
         }
@@ -184,4 +187,5 @@ void Server::handlerequest(int client_socket)
             perror("recv failed");
         }
     }
+    close(client_socket);
 }
