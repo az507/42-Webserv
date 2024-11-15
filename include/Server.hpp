@@ -6,13 +6,15 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 10:31:17 by xzhang            #+#    #+#             */
-/*   Updated: 2024/11/12 10:31:19 by xzhang           ###   ########.fr       */
+/*   Updated: 2024/11/15 12:23:19 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include <netdb.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -22,6 +24,7 @@
 #include <sys/epoll.h>
 #include <vector>
 #include <fcntl.h>
+#include <cstdio>
 #define MAXEVENTS 64
 class Server
 {

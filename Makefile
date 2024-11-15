@@ -6,12 +6,12 @@
 #    By: xzhang <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/11/11 17:52:33 by xzhang            #+#    #+#              #
-#    Updated: 2024/11/13 19:14:53 by achak            ###   ########.fr        #
+#    Updated: 2024/11/15 12:22:33 by achak            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = webserv
-SRCS = main.cpp src/ConfigFile.cpp
+SRCS = main.cpp src/ConfigFile.cpp src/Server.cpp
 CPP = c++
 CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g#-fsanitize=address
 OBJS = $(SRCS:.cpp=.o)

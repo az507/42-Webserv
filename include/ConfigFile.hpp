@@ -40,14 +40,14 @@ struct ServerInfo {
     std::vector<std::pair<std::string, std::string> > ip_addrs;
 };
 
-std::ostream& operator<<(std::ostream&, const RouteInfo&);
-std::ostream& operator<<(std::ostream&, const ServerInfo&);
+std::ostream& operator<<(std::ostream&, RouteInfo const&);
+std::ostream& operator<<(std::ostream&, ServerInfo const&);
 
 class ConfigFile {
     public:
         explicit ConfigFile(const char *);
         void printServerInfo() const;
-        std::vector<ServerInfo> getServerInfo() const;
+        std::vector<ServerInfo> const& getServerInfo() const;
     private:
         enum TokenType {
             LISTEN = 0,
@@ -67,23 +67,23 @@ class ConfigFile {
         std::ifstream infile;
         std::vector<ServerInfo> servers;
         std::vector<std::string> keywords;
-        std::vector<void(ConfigFile::*)(const std::vector<std::string>&, void *)> setters;
+        std::vector<void (ConfigFile::*)(std::vector<std::string> const&, void *)> setters;
 
         void *convertIdxToAddr(int);
-        void dirListHandler(const std::vector<std::string>&, void *);
-        void httpMethodsHandler(const std::vector<std::string>&, void *);
-        void errorPageHandler(const std::vector<std::string>&, void *);
-        void maxClientsHandler(const std::vector<std::string>&, void *);
-        void ipAddrsHandler(const std::vector<std::string>&, void *);
-        void defaultStringHandler(const std::vector<std::string>&, void *);
-        void defaultVectorHandler(const std::vector<std::string>&, void *);
+        void dirListHandler(std::vector<std::string> const&, void *);
+        void httpMethodsHandler(std::vector<std::string> const&, void *);
+        void errorPageHandler(std::vector<std::string> const&, void *);
+        void maxClientsHandler(std::vector<std::string> const&, void *);
+        void ipAddrsHandler(std::vector<std::string> const&, void *);
+        void defaultStringHandler(std::vector<std::string> const&, void *);
+        void defaultVectorHandler(std::vector<std::string> const&, void *);
         
         std::vector<std::string> initKeywords() const;
-        std::vector<void(ConfigFile::*)(const std::vector<std::string>&, void *)> initSetters() const;
+        std::vector<void (ConfigFile::*)(std::vector<std::string> const&, void *)> initSetters() const;
 
         ConfigFile();
-        ConfigFile(const ConfigFile&);
-        ConfigFile& operator=(const ConfigFile&);
+        ConfigFile(ConfigFile const&);
+        ConfigFile& operator=(ConfigFile const&);
 };
 
 #endif
