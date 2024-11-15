@@ -88,7 +88,6 @@ void Server::initsocker(int port)
     //     close(serversocket);
     //     exit(EXIT_FAILURE);
     // }
-
 }
 
 void Server::initepoll()
