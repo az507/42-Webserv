@@ -27,35 +27,70 @@ Server::~Server()
 
 void Server::initsocker(int port)
 {
-    serversocket = socket(AF_INET, SOCK_STREAM, 0);
+    serversocket = socket(AF_INET, SOCK_STREAM, 0);// AF_INET: IPv4, SOCK_STREAM: TCP 0: default protocol return a file descriptor
     if (serversocket < 0)
     {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
     int s = 1;
-    if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0)
+    if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
     {
         perror("setsockpt failed");
         close(serversocket);
         exit(EXIT_FAILURE);
     }
-    serveraddress.sin_family = AF_INET;
-    serveraddress.sin_addr.s_addr = INADDR_ANY;
-    serveraddress.sin_port = htons(port);
+    // serveraddress.sin_family = AF_INET;
+    // serveraddress.sin_addr.s_addr = INADDR_ANY;  //
+    // serveraddress.sin_port = htons(port);
 
-    if (bind(serversocket, (struct sockeaddr*)&serveraddress, sizeof(serveraddress)) < 0)
+    struct addrinfo hints, *res;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_STREAM; // TCP
+    hints.ai_flags = AI_PASSIVE; // bind to any address
+
+
+    int status = getaddrinfo(NULL, "8080", &hints, &res);
+    if (status != 0)
     {
-        perror("Binding failed");
+        std::cerr << "getaddrinfo failed: " << gai_strerror(status) << std::endl;
         close(serversocket);
         exit(EXIT_FAILURE);
     }
+
+    if (bind(serversocket, res->ai_addr, res->ai_addrlen) < 0)
+    {
+        perror("Binding failed");
+        freeaddrinfo(res);
+        close(serversocket);
+        exit(EXIT_FAILURE);
+    }
+
+    freeaddrinfo(res);
+
     if (listen(serversocket, 10) < 0)
     {
         perror("Listening failed");
         close(serversocket);
         exit(EXIT_FAILURE);
     }
+
+
+
+
+    // if (bind(serversocket, (struct sockeaddr*)&serveraddress, sizeof(serveraddress)) < 0)
+    // {
+    //     perror("Binding failed");
+    //     close(serversocket);
+    //     exit(EXIT_FAILURE);
+    // }
+    // if (listen(serversocket, 10) < 0)
+    // {
+    //     perror("Listening failed");
+    //     close(serversocket);
+    //     exit(EXIT_FAILURE);
+    // }
 
 }
 
