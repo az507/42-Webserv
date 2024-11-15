@@ -76,9 +76,6 @@ void Server::initsocker(int port)
         exit(EXIT_FAILURE);
     }
 
-
-
-
     // if (bind(serversocket, (struct sockeaddr*)&serveraddress, sizeof(serveraddress)) < 0)
     // {
     //     perror("Binding failed");
