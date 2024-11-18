@@ -167,7 +167,6 @@ void Server::handleconnections()
     }
 }
 
-
 void Server::handlerequest(int client_socket)
 {
     char buffer[1024];
@@ -189,12 +188,59 @@ void Server::handlerequest(int client_socket)
         if (method == "GET")
         {
             std::cout << "GET request received" << std::endl;
+            std::string filepath = rootdir + url;
+            if (filepath.back() == '/')
+                filepath += "index.html";
+            
+            std::ifstream file(filepath.c_str());
+            if (file)
+            {
+                std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                std::string response = "HTTP/1.1 200 OK\r\n"
+                                       "Content-Type: text/html\r\n\r\n"
+                                       "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n"
+                                       "<html><body>" + content + "</body></html>";
+                send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);             
+            }
+            else
+            {
+                std::string error = "HTTP/1.1 404 Not Found\r\n"
+                                    "Content-Type: text/html\r\n\r\n"
+                                    "<html><body><h1>404 Not Found</h1></body></html>";
+                send(client_socket, error.c_str(), error.size(), MSG_DONTWAIT);
+            }
+        }
+
+        else if (method == "POST")
+        {
+            size_t start = request.find("\r\n\r\n") + 4; // start of the body
+            std::string body = request.substr(start);
+
+            std::ofstream outfile("upload.txt");
+            outfile << body;
+            outfile.close();
 
             std::string response = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: text/html\r\n\r\n"
-                                   //"connection: close\r\n\r\n"
-                                   "<html><body><h1>Hello, World!</h1></body></html>";
+                                   "<html><body><h1>File uploaded successfully</h1></body></html>";
             send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
+
+        }
+
+        else if (method == "DELETE")
+        {
+            std::string filepath = rootdir + url;
+            if (remove(filepath.c_str()) == 0)
+            {
+                std::string response = "HTTP/1.1 200 OK\r\n"
+                                       "Content-Type: text/html\r\n\r\n"
+                                       "<html><body><h1>File deleted successfully</h1></body></html>";
+                send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
+            }
+            else
+            {
+                severerrorpage(client_socket, 404);
+            }
         }
         // else if (bytesreceived == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         // {
@@ -206,4 +252,74 @@ void Server::handlerequest(int client_socket)
         }
     }
     close(client_socket);
+}
+
+
+
+// void Server::handlerequest(int client_socket)
+// {
+//     char buffer[1024];
+//     int bytesreceived = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+
+//     if (bytesreceived > 0)
+//     {
+//         buffer[bytesreceived] = '\0';
+
+//         // Simple check for GET request 
+//         std::string request(buffer);
+//         if (request.substr(0, 3) == "GET")
+//         {
+//             std::string response = "HTTP/1.1 200 OK\r\n"
+//                                    "Content-Type: text/html\r\n\r\n"
+//                                    //"connection: close\r\n\r\n"
+//                                    "<html><body><h1>Hello, World!</h1></body></html>";
+//             send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
+//         }
+//         // else if (bytesreceived == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+//         // {
+//         //     return ;
+//         // } // Non-blocking socket, no data to read but can not  EAGAIN or EWOULDBLOCK
+//         else
+//         {
+//             perror("recv failed");
+//         }
+//     }
+//     close(client_socket);
+// }
+
+void Server::severerrorpage(int clientsocket, int statuscode)
+{
+    std::string statusmessage;
+    switch (statuscode)
+    {
+        case 404:
+            statusmessage = "Not Found";
+            break;
+        case 500:
+            statusmessage = "Internal Server Error";
+            break;
+        default:
+            statusmessage = "Not Found";
+            break;
+        
+        std::string errorpagepayth = errorpage[statuscode];
+        std::ifstream file(errorpagepath.c_str());
+        std::string response;
+
+        if (feile)
+        {
+            std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            response = "HTTP/1.1 " + std::to_string(statuscode) + " " + statusmessage + "\r\n"
+                       "Content-Type: text/html\r\n\r\n"
+                       "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n"
+                       "<html><body>" + content + "</body></html>";
+        }
+        else
+        {
+            response = "HTTP/1.1 " + std::to_string(statuscode) + " " + statusmessage + "\r\n"
+                       "Content-Type: text/html\r\n\r\n"
+                       "<html><body><h1>" + std::to_string(statuscode) + " " + statusmessage + "</h1></body></html>";
+        }
+        send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
+    }
 }
