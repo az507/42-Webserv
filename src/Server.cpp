@@ -34,6 +34,7 @@ void Server::initsocker(int port)
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
+    std::cout << "Server socket created: " << serversocket << std::endl;
     int s = 1;
     if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
     {
@@ -63,8 +64,8 @@ void Server::initsocker(int port)
     if (bind(serversocket, res->ai_addr, res->ai_addrlen) < 0)
     {
         perror("Binding failed");
-        freeaddrinfo(res);
         close(serversocket);
+        freeaddrinfo(res);
         exit(EXIT_FAILURE);
     }
 
@@ -89,6 +90,7 @@ void Server::initsocker(int port)
     //     close(serversocket);
     //     exit(EXIT_FAILURE);
     // }
+    std::cout << "Server is listening on port " << port << std::endl;
 }
 
 void Server::initepoll()
@@ -99,9 +101,12 @@ void Server::initepoll()
         perror("epoll creation failed");
         exit(EXIT_FAILURE);
     }
+    std::cout << "Epoll instance created: " << epollfd << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = serversocket;
+    std::cout << "Adding server socket to epoll: " << serversocket << std::endl;
+    std::cout << "Epoll FD: " << epollfd << std::endl;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serversocket, &ev) < 0)
     {
         perror("epoll_ctl failed");
@@ -109,6 +114,8 @@ void Server::initepoll()
         close(serversocket);
         exit(EXIT_FAILURE);
     }
+    std::cout << "Server socket added to epoll successfully." << std::endl;
+
 }
 
 void Server::run()
@@ -139,7 +146,7 @@ void Server::handleconnections()
                     ev.data.fd = clientsocket;
                     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientsocket, &ev) < 0)
                     {
-                        perror("epoll_ctl failed");
+                        perror("epoll_ctl failed1");
                         close(clientsocket);
                     }
                 }
@@ -148,12 +155,14 @@ void Server::handleconnections()
             {
                 if (events[i].events & EPOLLIN)
                     handlerequest(events[i].data.fd);
+                std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
+                close(events[i].data.fd);
+                // if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
+                // {
+                //     perror("epoll_ctl failed2: "); 
+                // }
             }
-            close(events[i].data.fd);
-            if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
-            {
-                perror("epoll_ctl failed");
-            }
+
         }
     }
 }
@@ -168,13 +177,13 @@ void Server::handlerequest(int client_socket)
     {
         buffer[bytesreceived] = '\0';
 
-        // Simple check for GET request
+        // Simple check for GET request 
         std::string request(buffer);
         if (request.substr(0, 3) == "GET")
         {
             std::string response = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: text/html\r\n\r\n"
-                                   "connection: close\r\n\r\n"
+                                   //"connection: close\r\n\r\n"
                                    "<html><body><h1>Hello, World!</h1></body></html>";
             send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
         }
