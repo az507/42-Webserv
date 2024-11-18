@@ -27,6 +27,7 @@ Server::~Server()
 
 void Server::initsocker(int port)
 {
+    (void)port;
     serversocket = socket(AF_INET, SOCK_STREAM, 0);// AF_INET: IPv4, SOCK_STREAM: TCP 0: default protocol return a file descriptor
     if (serversocket < 0)
     {
@@ -93,7 +94,7 @@ void Server::initsocker(int port)
 void Server::initepoll()
 {
     epollfd = epoll_create(1);
-    if (epollfd = -1)
+    if (epollfd == -1)
     {
         perror("epoll creation failed");
         exit(EXIT_FAILURE);
@@ -153,7 +154,6 @@ void Server::handleconnections()
             {
                 perror("epoll_ctl failed");
             }
-            
         }
     }
 }
