@@ -179,8 +179,17 @@ void Server::handlerequest(int client_socket)
 
         // Simple check for GET request 
         std::string request(buffer);
-        if (request.substr(0, 3) == "GET")
+
+        std::string method = request.substr(0, request.find(" "));
+        std::string url = request.substr(request.find(" ") + 1);//, request.find(" ", request.find(" ") + 1) - request.find(" ") - 1);
+        url = url.substr(0, url.find(" "));
+        std::cout << "Method: " << method << std::endl;
+        std::cout << "URL: " << url << std::endl;
+
+        if (method == "GET")
         {
+            std::cout << "GET request received" << std::endl;
+
             std::string response = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: text/html\r\n\r\n"
                                    //"connection: close\r\n\r\n"
