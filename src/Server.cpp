@@ -189,16 +189,18 @@ void Server::handlerequest(int client_socket)
         {
             std::cout << "GET request received" << std::endl;
             std::string filepath = rootdir + url;
-            if (filepath.back() == '/')
+            if (filepath[filepath.size() - 1] == '/')
                 filepath += "index.html";
             
             std::ifstream file(filepath.c_str());
             if (file)
             {
                 std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                std::ostringstream oss;
+                oss << content.size();
                 std::string response = "HTTP/1.1 200 OK\r\n"
                                        "Content-Type: text/html\r\n\r\n"
-                                       "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n"
+                                       "Content-Length: " + oss.str() + "\r\n\r\n"
                                        "<html><body>" + content + "</body></html>";
                 send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);             
             }
@@ -213,13 +215,18 @@ void Server::handlerequest(int client_socket)
 
         else if (method == "POST")
         {
+            std::cout << "POST request received" << std::endl;
             size_t start = request.find("\r\n\r\n") + 4; // start of the body
             std::string body = request.substr(start);
 
             std::ofstream outfile("upload.txt");
-            outfile << body;
-            outfile.close();
-
+            {
+                if (outfile)
+                {
+                    outfile << body;
+                    outfile.close();
+                }
+            }
             std::string response = "HTTP/1.1 200 OK\r\n"
                                    "Content-Type: text/html\r\n\r\n"
                                    "<html><body><h1>File uploaded successfully</h1></body></html>";
@@ -229,6 +236,7 @@ void Server::handlerequest(int client_socket)
 
         else if (method == "DELETE")
         {
+            std::cout << "DELETE request received" << std::endl;
             std::string filepath = rootdir + url;
             if (remove(filepath.c_str()) == 0)
             {
@@ -293,32 +301,36 @@ void Server::severerrorpage(int clientsocket, int statuscode)
     switch (statuscode)
     {
         case 404:
-            statusmessage = "Not Found";
+            statusmessage = "404 Not Found";
             break;
         case 500:
-            statusmessage = "Internal Server Error";
+            statusmessage = "500 Internal Server Error";
             break;
         default:
             statusmessage = "Not Found";
             break;
         
-        std::string errorpagepayth = errorpage[statuscode];
+        std::string errorpagepath = errorpage[statuscode]; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
         std::ifstream file(errorpagepath.c_str());
         std::string response;
 
-        if (feile)
+        if (file)
         {
             std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            response = "HTTP/1.1 " + std::to_string(statuscode) + " " + statusmessage + "\r\n"
+
+            std::ostringstream oss;
+            oss << content.size();
+
+            response = "HTTP/1.1 " + statusmessage + " " + statusmessage + "\r\n"
                        "Content-Type: text/html\r\n\r\n"
-                       "Content-Length: " + std::to_string(content.size()) + "\r\n\r\n"
+                       "Content-Length: " + oss.str() + "\r\n\r\n"
                        "<html><body>" + content + "</body></html>";
         }
         else
         {
-            response = "HTTP/1.1 " + std::to_string(statuscode) + " " + statusmessage + "\r\n"
+            response = "HTTP/1.1 " + statusmessage + "\r\n"
                        "Content-Type: text/html\r\n\r\n"
-                       "<html><body><h1>" + std::to_string(statuscode) + " " + statusmessage + "</h1></body></html>";
+                       "<html><body><h1>" + statusmessage + "</h1></body></html>";
         }
         send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
     }
