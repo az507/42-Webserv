@@ -25,6 +25,8 @@
 #include <vector>
 #include <fcntl.h>
 #include <cstdio>
+#include <map>
+#include <sstream>
 #define MAXEVENTS 64
 class Server
 {
@@ -37,11 +39,13 @@ class Server
         int serversocket;
         int epollfd;
         struct sockaddr_in serveraddress;
+        //std::map<int, std::string> errorpage; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
 
         void initsocker(int port);
         void initepoll();
         void handleconnections();
         void handlerequest(int clientsocket);
+        void severerrorpage(int clientsocket, int statuscode);
 };
 
 #endif
