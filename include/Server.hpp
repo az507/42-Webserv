@@ -26,7 +26,9 @@
 #include <fcntl.h>
 #include <cstdio>
 #include <map>
-#include <sstream>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <sys/types.h>
 #define MAXEVENTS 64
 class Server
 {

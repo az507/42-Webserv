@@ -167,6 +167,59 @@ void Server::handleconnections()
     }
 }
 
+
+void Server::servestaticfile(int client_socket, std::string filepath)
+{
+    std::ifstream file(filepath.c_str());
+    if (file)
+    {
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+        std::ostringstream oss;
+        oss << content.size();
+
+        std::string response = "HTTP/1.1 200 OK\r\n"
+                               "Content-Type: text/html\r\n\r\n"
+                               "Content-Length: " + oss.str() + "\r\n\r\n"
+                               "<html><body>" + content + "</body></html>";
+        send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT)    
+    }
+    else
+    {
+        severerrorpage(client_socket, 404);
+    }
+}    
+
+void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
+{
+    DIR *dir = opendir(dirpath.c_str());
+    if (!dir)
+    {
+        severerrorpage(clientsocket, 404);
+        return ;
+    }
+    std::string response = "<html><body><h1>Direrctort Listing </h1><ul>";
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        std::string name = entry->d_name;
+        if (name == "." || name == "..")
+            continue ;
+        html += "<li><a href=\"" + name + "\">" + name + "</a></li>";
+    }
+    html += "</ul></body></html>";
+    closedir(dir);
+    std::ostream oss;
+    oss << html.size();
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Content-Type: text/html\r\n\r\n"
+                           "Content-Length: " + oss.str() + "\r\n\r\n"
+                           "<html><body>" + html + "</body></html>";
+    send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
+}
+
+
 void Server::handlerequest(int client_socket)
 {
     char buffer[1024];
