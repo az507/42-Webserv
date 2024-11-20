@@ -12,86 +12,158 @@
 
 #include "../include/Server.hpp"
 
-Server::Server(int port)
+Server::Server(const std::vector<std::pair<std::string, std::string> > &serverinfo, const std::string &rootdir) :rootdir(rootdir)
 {
-    initsocker(port);
+    initsocker(serverinfo);
     initepoll();
     
 }
 
 Server::~Server()
 {
-    close(serversocket);
+    for (size_t i = 0; i < serversockets.size(); ++i)
+    {
+        close(serversockets[i]);
+    }
+
+    //close(serversocket);
     close(epollfd);
 }
 
-void Server::initsocker(int port)
+void Server::initsocker(const std::vector<std::pair<std::string, std::string> > &serverinfo)
 {
-    (void)port;
-    serversocket = socket(AF_INET, SOCK_STREAM, 0);// AF_INET: IPv4, SOCK_STREAM: TCP 0: default protocol return a file descriptor
-    if (serversocket < 0)
+    for (size_t i = 0; i < serverinfo.size(); ++i)
     {
-        perror("Socket creation failed");
-        exit(EXIT_FAILURE);
-    }
-    std::cout << "Server socket created: " << serversocket << std::endl;
-    int s = 1;
-    if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
-    {
-        perror("setsockpt failed");
-        close(serversocket);
-        exit(EXIT_FAILURE);
-    }
-    // serveraddress.sin_family = AF_INET;
-    // serveraddress.sin_addr.s_addr = INADDR_ANY;  //
-    // serveraddress.sin_port = htons(port);
+        std::string ip = serverinfo[i].first;
+        std::string port = serverinfo[i].second;
+        
+        int serversocket;
+        serversocket = socket(AF_INET, SOCK_STREAM, 0);// AF_INET: IPv4, SOCK_STREAM: TCP 0: default protocol return a file descriptor
+        if (serversocket < 0)
+        {
+            perror("Socket creation failed");
+            exit(EXIT_FAILURE);
+        }
+        std::cout << "Server socket created: " << serversocket << std::endl;
+        int s = 1;
+        // if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
+        // {
+        //     perror("setsockpt failed");
+        //     close(serversocket);
+        //     exit(EXIT_FAILURE);
+        // }
+        struct addrinfo hints, *res;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_INET; // IPv4
+        hints.ai_socktype = SOCK_STREAM; // TCP
+        hints.ai_flags = AI_PASSIVE; // bind to any address
 
-    struct addrinfo hints, *res;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET; // IPv4
-    hints.ai_socktype = SOCK_STREAM; // TCP
-    hints.ai_flags = AI_PASSIVE; // bind to any address
+         int status = getaddrinfo(ip.empty() ? NULL : ip.c_str(), port, &hints, &res);
+        //int status = getaddrinfo(NULL, "8080", &hints, &res);
+        if (status != 0)
+        {
+              std::cerr << "getaddrinfo failed for " << ip << ":" << port
+                      << ": " << gai_strerror(status) << std::endl;
+            //std::cerr << "getaddrinfo failed: " << gai_strerror(status) << std::endl;
+            //close(serversocket);
+            exit(EXIT_FAILURE);
+        }
+        if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
+        {
+            perror("setsockpt failed");
+            close(serversocket);
+            freeaddrinfo(res);
+            exit(EXIT_FAILURE);
+        }
 
+        if (bind(serversocket, res->ai_addr, res->ai_addrlen) < 0)
+        {
+            perror("Binding failed");
+            close(serversocket);
+            freeaddrinfo(res);
+            exit(EXIT_FAILURE);
+        }
 
-    int status = getaddrinfo(NULL, "8080", &hints, &res);
-    if (status != 0)
-    {
-        std::cerr << "getaddrinfo failed: " << gai_strerror(status) << std::endl;
-        close(serversocket);
-        exit(EXIT_FAILURE);
-    }
-
-    if (bind(serversocket, res->ai_addr, res->ai_addrlen) < 0)
-    {
-        perror("Binding failed");
-        close(serversocket);
         freeaddrinfo(res);
-        exit(EXIT_FAILURE);
+
+        if (listen(serversocket, 10) < 0)
+        {
+            perror("Listening failed");
+            close(serversocket);
+            exit(EXIT_FAILURE);
+        }
+        serversockets.push_back(serversocket);
+        //std::cout << "Server is listening on port " << serverinfo[i].second << std::endl;
+                std::cout << "Server is listening on " << (ip.empty() ? "all interfaces" : ip)
+                  << ":" << port << std::endl;
     }
-
-    freeaddrinfo(res);
-
-    if (listen(serversocket, 10) < 0)
-    {
-        perror("Listening failed");
-        close(serversocket);
-        exit(EXIT_FAILURE);
-    }
-
-    // if (bind(serversocket, (struct sockeaddr*)&serveraddress, sizeof(serveraddress)) < 0)
-    // {
-    //     perror("Binding failed");
-    //     close(serversocket);
-    //     exit(EXIT_FAILURE);
-    // }
-    // if (listen(serversocket, 10) < 0)
-    // {
-    //     perror("Listening failed");
-    //     close(serversocket);
-    //     exit(EXIT_FAILURE);
-    // }
-    std::cout << "Server is listening on port " << port << std::endl;
 }
+//{
+//     (void)port;
+//     serversocket = socket(AF_INET, SOCK_STREAM, 0);// AF_INET: IPv4, SOCK_STREAM: TCP 0: default protocol return a file descriptor
+//     if (serversocket < 0)
+//     {
+//         perror("Socket creation failed");
+//         exit(EXIT_FAILURE);
+//     }
+//     std::cout << "Server socket created: " << serversocket << std::endl;
+//     int s = 1;
+//     if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
+//     {
+//         perror("setsockpt failed");
+//         close(serversocket);
+//         exit(EXIT_FAILURE);
+//     }
+//     // serveraddress.sin_family = AF_INET;
+//     // serveraddress.sin_addr.s_addr = INADDR_ANY;  //
+//     // serveraddress.sin_port = htons(port);
+
+//     struct addrinfo hints, *res;
+//     memset(&hints, 0, sizeof(hints));
+//     hints.ai_family = AF_INET; // IPv4
+//     hints.ai_socktype = SOCK_STREAM; // TCP
+//     hints.ai_flags = AI_PASSIVE; // bind to any address
+
+
+//     int status = getaddrinfo(NULL, "8080", &hints, &res);
+//     if (status != 0)
+//     {
+//         std::cerr << "getaddrinfo failed: " << gai_strerror(status) << std::endl;
+//         close(serversocket);
+//         exit(EXIT_FAILURE);
+//     }
+
+//     if (bind(serversocket, res->ai_addr, res->ai_addrlen) < 0)
+//     {
+//         perror("Binding failed");
+//         close(serversocket);
+//         freeaddrinfo(res);
+//         exit(EXIT_FAILURE);
+//     }
+
+//     freeaddrinfo(res);
+
+//     if (listen(serversocket, 10) < 0)
+//     {
+//         perror("Listening failed");
+//         close(serversocket);
+//         exit(EXIT_FAILURE);
+//     }
+
+//     // if (bind(serversocket, (struct sockeaddr*)&serveraddress, sizeof(serveraddress)) < 0)
+//     // {
+//     //     perror("Binding failed");
+//     //     close(serversocket);
+//     //     exit(EXIT_FAILURE);
+//     // }
+//     // if (listen(serversocket, 10) < 0)
+//     // {
+//     //     perror("Listening failed");
+//     //     close(serversocket);
+//     //     exit(EXIT_FAILURE);
+//     // }
+//     std::cout << "Server is listening on port " << port << std::endl;
+// }
 
 void Server::initepoll()
 {
@@ -104,24 +176,52 @@ void Server::initepoll()
     std::cout << "Epoll instance created: " << epollfd << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.fd = serversocket;
-    std::cout << "Adding server socket to epoll: " << serversocket << std::endl;
-    std::cout << "Epoll FD: " << epollfd << std::endl;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serversocket, &ev) < 0)
+    for (size_t i = 0; i < serversockets.size(); ++i)
     {
-        perror("epoll_ctl failed");
-        close(epollfd);
-        close(serversocket);
-        exit(EXIT_FAILURE);
+        ev.data.fd = serversockets[i];
+        std::cout << "Adding server socket to epoll: " << serversockets[i] << std::endl;
+        std::cout << "Epoll FD: " << epollfd << std::endl;
+        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serversockets[i], &ev) < 0)
+        {
+            perror("epoll_ctl failed");
+            close(epollfd);
+            close(serversockets[i]);
+            exit(EXIT_FAILURE);
+        }
+        std::cout << "Server socket added to epoll successfully." << std::endl;
     }
-    std::cout << "Server socket added to epoll successfully." << std::endl;
-
 }
+
+// void Server::initepoll()
+// {
+//     epollfd = epoll_create(1);
+//     if (epollfd == -1)
+//     {
+//         perror("epoll creation failed");
+//         exit(EXIT_FAILURE);
+//     }
+//     std::cout << "Epoll instance created: " << epollfd << std::endl;
+//     struct epoll_event ev;
+//     ev.events = EPOLLIN;
+//     ev.data.fd = serversocket;
+//     std::cout << "Adding server socket to epoll: " << serversocket << std::endl;
+//     std::cout << "Epoll FD: " << epollfd << std::endl;
+//     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serversocket, &ev) < 0)
+//     {
+//         perror("epoll_ctl failed");
+//         close(epollfd);
+//         close(serversocket);
+//         exit(EXIT_FAILURE);
+//     }
+//     std::cout << "Server socket added to epoll successfully." << std::endl;
+
+// }
 
 void Server::run()
 {
     handleconnections();
 }
+
 
 void Server::handleconnections()
 {
@@ -138,16 +238,19 @@ void Server::handleconnections()
         {
             if (events[i].data.fd == serversocket)
             {
-                int clientsocket = accept(serversocket, NULL, NULL);
-                if (clientsocket >= 0)
+                if (std::find(serversockets.begin(), serversockets.end(), events[i].data.fd) != serversockets.end()) // check if the server socket is in the list of server sockets
                 {
-                    struct epoll_event ev;
-                    ev.events = EPOLLIN | EPOLLET;
-                    ev.data.fd = clientsocket;
-                    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientsocket, &ev) < 0)
+                    int clientsocket = accept(serversocket, NULL, NULL);
+                    if (clientsocket >= 0)
                     {
-                        perror("epoll_ctl failed1");
-                        close(clientsocket);
+                        struct epoll_event ev;
+                        ev.events = EPOLLIN | EPOLLET;
+                        ev.data.fd = clientsocket;
+                        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientsocket, &ev) < 0)
+                        {
+                            perror("epoll_ctl failed1");
+                            close(clientsocket);
+                        }    
                     }
                 }
             }
@@ -167,6 +270,50 @@ void Server::handleconnections()
     }
 }
 
+// void Server::handleconnections()
+// {
+//     struct epoll_event events[MAXEVENTS];
+//     while (1)
+//     {
+//         int eventcount = epoll_wait(epollfd, events, MAXEVENTS, -1);
+//         if (eventcount < 0)
+//         {
+//             perror("epoll_wait failed");
+//             break;
+//         }
+//         for (int i = 0; i < eventcount; ++i)
+//         {
+//             if (events[i].data.fd == serversocket)
+//             {
+//                 int clientsocket = accept(serversocket, NULL, NULL);
+//                 if (clientsocket >= 0)
+//                 {
+//                     struct epoll_event ev;
+//                     ev.events = EPOLLIN | EPOLLET;
+//                     ev.data.fd = clientsocket;
+//                     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientsocket, &ev) < 0)
+//                     {
+//                         perror("epoll_ctl failed1");
+//                         close(clientsocket);
+//                     }
+//                 }
+//             }
+//             else
+//             {
+//                 if (events[i].events & EPOLLIN)
+//                     handlerequest(events[i].data.fd);
+//                 std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
+//                 close(events[i].data.fd);
+//                 // if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
+//                 // {
+//                 //     perror("epoll_ctl failed2: "); 
+//                 // }
+//             }
+
+//         }
+//     }
+// }
+
 
 void Server::servestaticfile(int clientsocket, std::string filepath)
 {
@@ -182,11 +329,11 @@ void Server::servestaticfile(int clientsocket, std::string filepath)
                                "Content-Type: text/html\r\n\r\n"
                                "Content-Length: " + oss.str() + "\r\n\r\n"
                                "<html><body>" + content + "</body></html>";
-        send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
+        send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
     }
     else
     {
-        severerrorpage(client_socket, 404);
+        severerrorpage(clientsocket, 404);
     }
 }    
 
@@ -265,18 +412,18 @@ void Server::handlerequest(int client_socket)
         std::cout << "Method: " << method << std::endl;
         std::cout << "URL: " << url << std::endl;
 
-        std::string sanitizepath = sanitizepath(rootdir, url);
-        if (sanitizepath.empty())
+        std::string sanitizedpath = sanitizepath(rootdir, url);
+        if (sanitizedpath.empty())
         {
             severerrorpage(client_socket, 400);
             return ;
         }
-        if (method == "GET")
+        else if (method == "GET")
         {
             std::cout << "GET request received" << std::endl;
-            if (isdirectory(sanitizepath))
+            if (isdirectory(sanitizedpath))
             {
-                serverdirlisting(client_socket, sanitizepath);
+                serverdirlisting(client_socket, sanitizedpath);
                 return ;
             }
             else
@@ -306,7 +453,7 @@ void Server::handlerequest(int client_socket)
         //                             "<html><body><h1>404 Not Found</h1></body></html>";
         //         send(client_socket, error.c_str(), error.size(), MSG_DONTWAIT);
         //     }
-        // }
+        }
 
         else if (method == "POST")
         {
@@ -349,17 +496,16 @@ void Server::handlerequest(int client_socket)
         {
             severerrorpage(client_socket, 405);
         }
-
         // else if (bytesreceived == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         // {
         //     return ;
         // } // Non-blocking socket, no data to read but can not  EAGAIN or EWOULDBLOCK
-        else
+    }
+    close(client_socket);
+    else
         {
             perror("recv failed");
         }
-    }
-    close(client_socket);
 }
 
 
@@ -404,31 +550,33 @@ void Server::severerrorpage(int clientsocket, int statuscode)
             statusmessage = "404 Not Found";
             break ;
         case 500:
-            statusmes
-            // Sanitize and resolve the path
-            std::string sanitizedPath = sanitizePath(rootdir, url);
-        std::string errorpagepath = errorpage[statuscode]; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
-        std::ifstream file(errorpagepath.c_str());
-        std::string response;
-
-        if (file)
-        {
-            std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-            std::ostringstream oss;
-            oss << content.size();
-
-            response = "HTTP/1.1 " + statusmessage + " " + statusmessage + "\r\n"
-                       "Content-Type: text/html\r\n\r\n"
-                       "Content-Length: " + oss.str() + "\r\n\r\n"
-                       "<html><body>" + content + "</body></html>";
-        }
-        else
-        {
-            response = "HTTP/1.1 " + statusmessage + "\r\n"
-                       "Content-Type: text/html\r\n\r\n"
-                       "<html><body><h1>" + statusmessage + "</h1></body></html>";
-        }
-        send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
+            statusmessage = "500 Internal Server Error";
+            break ;
+        default:
+            statusmessage = "400 Bad Request";
+            break ;
     }
+    std::string errorpagepath = errorpage[statuscode]; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
+    std::ifstream file(errorpagepath.c_str());
+    std::string response;
+
+    if (file)
+    {
+        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+        std::ostringstream oss;
+        oss << content.size();
+
+        response = "HTTP/1.1 " + statusmessage + " " + statusmessage + "\r\n"
+                    "Content-Type: text/html\r\n\r\n"
+                    "Content-Length: " + oss.str() + "\r\n\r\n"
+                    "<html><body>" + content + "</body></html>";
+    }
+    else
+    {
+        response = "HTTP/1.1 " + statusmessage + "\r\n"
+                    "Content-Type: text/html\r\n\r\n"
+                    "<html><body><h1>" + statusmessage + "</h1></body></html>";
+    }
+    send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
 }

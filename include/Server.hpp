@@ -31,26 +31,37 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <fstream>
+#include <sstream>
 #define MAXEVENTS 64
 class Server
 {
     public:
-        Server(int port);
+        Server(const std::vector<std::pair<std::string, std::string> > &serverinfo, const std::string &rootdir);  
         ~Server();
         void run();
     
     private:
-        int serversocket;
+        std::vector<int> serversockets;
+        //int serversocket;
         int epollfd;
-        struct sockaddr_in serveraddress;
+        std::string rootdir;
+        //struct sockaddr_in serveraddress;
         //std::map<int, std::string> errorpage; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
 
-        void initsocker(int port);
+        void initsocker(const std::vector<std::pair<std::string, std::string> > &serverinfo);
         void initepoll();
         void handleconnections();
         void handlerequest(int clientsocket);
         void severerrorpage(int clientsocket, int statuscode);
         void servestaticfile(int clientsocket, std::string filepath);
+        void serverdirlisting(int clientsocket, std::string &dirpath);
+        std::string sanitizepath(const std::string& basedir, const std::string& requestedpath);
+
+        bool isdirectory(const std::string &path);
 };
 
 #endif
