@@ -265,33 +265,48 @@ void Server::handlerequest(int client_socket)
         std::cout << "Method: " << method << std::endl;
         std::cout << "URL: " << url << std::endl;
 
+        std::string sanitizepath = sanitizepath(rootdir, url);
+        if (sanitizepath.empty())
+        {
+            severerrorpage(client_socket, 400);
+            return ;
+        }
         if (method == "GET")
         {
             std::cout << "GET request received" << std::endl;
-            std::string filepath = rootdir + url;
-            if (filepath[filepath.size() - 1] == '/')
-                filepath += "index.html";
-            
-            std::ifstream file(filepath.c_str());
-            if (file)
+            if (isdirectory(sanitizepath))
             {
-                std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-                std::ostringstream oss;
-                oss << content.size();
-                std::string response = "HTTP/1.1 200 OK\r\n"
-                                       "Content-Type: text/html\r\n\r\n"
-                                       "Content-Length: " + oss.str() + "\r\n\r\n"
-                                       "<html><body>" + content + "</body></html>";
-                send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);             
+                serverdirlisting(client_socket, sanitizepath);
+                return ;
             }
             else
             {
-                std::string error = "HTTP/1.1 404 Not Found\r\n"
-                                    "Content-Type: text/html\r\n\r\n"
-                                    "<html><body><h1>404 Not Found</h1></body></html>";
-                send(client_socket, error.c_str(), error.size(), MSG_DONTWAIT);
+                servestaticfile(client_socket, sanitizepath);
             }
-        }
+        //     std::string filepath = rootdir + url;
+        //     if (filepath[filepath.size() - 1] == '/')
+        //         filepath += "index.html";
+            
+        //     std::ifstream file(filepath.c_str());
+        //     if (file)
+        //     {
+        //         std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        //         std::ostringstream oss;
+        //         oss << content.size();
+        //         std::string response = "HTTP/1.1 200 OK\r\n"
+        //                                "Content-Type: text/html\r\n\r\n"
+        //                                "Content-Length: " + oss.str() + "\r\n\r\n"
+        //                                "<html><body>" + content + "</body></html>";
+        //         send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);             
+        //     }
+        //     else
+        //     {
+        //         std::string error = "HTTP/1.1 404 Not Found\r\n"
+        //                             "Content-Type: text/html\r\n\r\n"
+        //                             "<html><body><h1>404 Not Found</h1></body></html>";
+        //         send(client_socket, error.c_str(), error.size(), MSG_DONTWAIT);
+        //     }
+        // }
 
         else if (method == "POST")
         {
@@ -330,6 +345,11 @@ void Server::handlerequest(int client_socket)
                 severerrorpage(client_socket, 404);
             }
         }
+        else
+        {
+            severerrorpage(client_socket, 405);
+        }
+
         // else if (bytesreceived == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         // {
         //     return ;
@@ -384,12 +404,9 @@ void Server::severerrorpage(int clientsocket, int statuscode)
             statusmessage = "404 Not Found";
             break ;
         case 500:
-            statusmessage = "500 Internal Server Error";
-            break ;
-        default:
-            statusmessage = "Not Found";
-            break ;
-        
+            statusmes
+            // Sanitize and resolve the path
+            std::string sanitizedPath = sanitizePath(rootdir, url);
         std::string errorpagepath = errorpage[statuscode]; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
         std::ifstream file(errorpagepath.c_str());
         std::string response;
