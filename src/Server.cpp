@@ -218,7 +218,13 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
                            "<html><body>" + html + "</body></html>";
     send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
 }
-
+bool isdirectory(const std::string &path)
+{
+    struct stat statbuf;
+    if (stat(path.c_str(), &statbuf) != 0)
+        return false;
+    return S_ISDIR(statbuf.st_mode);
+}
 
 void Server::handlerequest(int client_socket)
 {
