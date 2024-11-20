@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <stdlib.h>
+#include <limits.h>
 #define MAXEVENTS 64
 class Server
 {
@@ -48,6 +50,7 @@ class Server
         void handleconnections();
         void handlerequest(int clientsocket);
         void severerrorpage(int clientsocket, int statuscode);
+        void servestaticfile(int clientsocket, std::string filepath);
 };
 
 #endif
