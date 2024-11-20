@@ -168,7 +168,7 @@ void Server::handleconnections()
 }
 
 
-void Server::servestaticfile(int client_socket, std::string filepath)
+void Server::servestaticfile(int clientsocket, std::string filepath)
 {
     std::ifstream file(filepath.c_str());
     if (file)
@@ -182,7 +182,7 @@ void Server::servestaticfile(int client_socket, std::string filepath)
                                "Content-Type: text/html\r\n\r\n"
                                "Content-Length: " + oss.str() + "\r\n\r\n"
                                "<html><body>" + content + "</body></html>";
-        send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT)    
+        send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
     }
     else
     {
@@ -198,7 +198,7 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
         severerrorpage(clientsocket, 404);
         return ;
     }
-    std::string response = "<html><body><h1>Direrctort Listing </h1><ul>";
+    std::string html = "<html><body><h1>Direrctort Listing </h1><ul>";
 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL)
@@ -221,10 +221,31 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
 bool isdirectory(const std::string &path)
 {
     struct stat statbuf;
-    if (stat(path.c_str(), &statbuf) != 0)
-        return false;
-    return S_ISDIR(statbuf.st_mode);
+
+    if (stat(path.c_str(), &statbuf) != 0) // stat: get file status
+        return (false);
+    return S_ISDIR(statbuf.st_mode); // S_ISDIR: is directory macro in stat.h file
 }
+
+std::string sanitizepath(const std::string& basedir, const std::string& requestedpath)
+{
+    char resolvedpath[PATH_MAX];
+
+    std::string fullpath = basedir + "/" + requestedpath;
+
+    if (realpath(fullpath.c_str(), resolvedpath))
+    {
+        std::string sanitizedpath(resolvedpath);
+
+        // Ensure the resolved path is still within the base directory
+        if (sanitizedpath.find(basedir) == 0)
+        {
+            return (sanitizedpath); // Valid and secure path
+        }
+    }
+    return (""); // Invalid path
+}
+
 
 void Server::handlerequest(int client_socket)
 {
@@ -361,13 +382,13 @@ void Server::severerrorpage(int clientsocket, int statuscode)
     {
         case 404:
             statusmessage = "404 Not Found";
-            break;
+            break ;
         case 500:
             statusmessage = "500 Internal Server Error";
-            break;
+            break ;
         default:
             statusmessage = "Not Found";
-            break;
+            break ;
         
         std::string errorpagepath = errorpage[statuscode]; // errorpage is a map defined in Server.hpp file error_pages[404] = "/errors/404.html"; error_pages[500] = "/errors/500.html";
         std::ifstream file(errorpagepath.c_str());
