@@ -239,11 +239,12 @@ void Server::handleconnections()
         }
         for (int i = 0; i < eventcount; ++i)
         {
-            if (events[i].data.fd == serversockets[i])
-            {
-                if (std::find(serversockets.begin(), serversockets.end(), events[i].data.fd) != serversockets.end()) // check if the server socket is in the list of server sockets
+            int fd = events[i].data.fd;
+            //if (events[i].data.fd == serversockets[i])
+            //{
+                if (std::find(serversockets.begin(), serversockets.end(), fd) != serversockets.end()) // check if the server socket is in the list of server sockets
                 {
-                    int clientsocket = accept(serversockets[i], NULL, NULL);
+                    int clientsocket = accept(fd, NULL, NULL);
                     if (clientsocket >= 0)
                     {
                         struct epoll_event ev;
@@ -256,13 +257,14 @@ void Server::handleconnections()
                         }    
                     }
                 }
-            }
+            //}
             else
             {
                 if (events[i].events & EPOLLIN)
-                    handlerequest(events[i].data.fd);
+                    handlerequest(fd);
                 std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
-                close(events[i].data.fd);
+                std::cout << "fd: " << fd << std::endl;
+                close(fd);
                 // if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
                 // {
                 //     perror("epoll_ctl failed2: "); 
