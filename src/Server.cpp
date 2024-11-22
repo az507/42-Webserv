@@ -42,7 +42,7 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
         
         int serversocket;
         serversocket = socket(AF_INET, SOCK_STREAM, 0);// AF_INET: IPv4, SOCK_STREAM: TCP 0: default protocol return a file descriptor
-        if (serversocket < 0)
+        if (serversocket < 0)                           
         {
             perror("Socket creation failed");
             exit(EXIT_FAILURE);
@@ -270,7 +270,6 @@ void Server::handleconnections()
                 //     perror("epoll_ctl failed2: "); 
                 // }
             }
-
         }
     }
 }
@@ -291,7 +290,7 @@ void Server::handleconnections()
 //             if (events[i].data.fd == serversocket)
 //             {
 //                 int clientsocket = accept(serversocket, NULL, NULL);
-//                 if (clientsocket >= 0)
+//                 if (clientsoserverdirlistingcket >= 0)
 //                 {
 //                     struct epoll_event ev;
 //                     ev.events = EPOLLIN | EPOLLET;
