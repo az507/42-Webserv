@@ -32,7 +32,9 @@ int ClientInfo::parseHeaders(std::string const& str) {
             oss.exceptions(oss.rdstate());
         } else {
             pos = str.find(':');
-            assert(pos != std::string::npos);
+            if (pos == std::string::npos) {
+                return ERROR;
+            }
             headers[buf.substr(0, pos)] = buf.substr(pos + 1);
         }
     }
