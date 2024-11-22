@@ -157,7 +157,7 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
 //     // {
 //     //     perror("Binding failed");
 //     //     close(serversocket);
-//     //     exit(EXIT_FAILURE);
+//     //     exit(EXhttp://localhost:8080/subdir/test.htmlIT_FAILURE);
 //     // }
 //     // if (listen(serversocket, 10) < 0)
 //     // {
