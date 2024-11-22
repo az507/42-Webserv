@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <ctime>
 #define MAXEVENTS 64
 class Server
 {
