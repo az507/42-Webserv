@@ -15,7 +15,10 @@
 Server::Server(const std::vector<std::pair<std::string, std::string> > &serverinfo, const std::string &rootdir) :rootdir(rootdir)
 {
     initsocker(serverinfo);
+    errorpage.insert(std::make_pair(404, "/errors/404.html"));
+    errorpage.insert(std::make_pair(500, "/errors/500.html"));
     initepoll();
+
     
 }
 
@@ -58,7 +61,7 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
         hints.ai_socktype = SOCK_STREAM; // TCP
         hints.ai_flags = AI_PASSIVE; // bind to any address
 
-         int status = getaddrinfo(ip.empty() ? NULL : ip.c_str(), port, &hints, &res);
+         int status = getaddrinfo(ip.empty() ? NULL : ip.c_str(), port.c_str(), &hints, &res);
         //int status = getaddrinfo(NULL, "8080", &hints, &res);
         if (status != 0)
         {
@@ -236,11 +239,11 @@ void Server::handleconnections()
         }
         for (int i = 0; i < eventcount; ++i)
         {
-            if (events[i].data.fd == serversocket)
+            if (events[i].data.fd == serversockets[i])
             {
                 if (std::find(serversockets.begin(), serversockets.end(), events[i].data.fd) != serversockets.end()) // check if the server socket is in the list of server sockets
                 {
-                    int clientsocket = accept(serversocket, NULL, NULL);
+                    int clientsocket = accept(serversockets[i], NULL, NULL);
                     if (clientsocket >= 0)
                     {
                         struct epoll_event ev;
@@ -357,7 +360,7 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
     }
     html += "</ul></body></html>";
     closedir(dir);
-    std::ostream oss;
+    std::ostringstream oss;
     oss << html.size();
     std::string response = "HTTP/1.1 200 OK\r\n"
                            "Content-Type: text/html\r\n\r\n"
@@ -365,7 +368,7 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
                            "<html><body>" + html + "</body></html>";
     send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
 }
-bool isdirectory(const std::string &path)
+bool Server::isdirectory(const std::string &path)
 {
     struct stat statbuf;
 
@@ -374,7 +377,7 @@ bool isdirectory(const std::string &path)
     return S_ISDIR(statbuf.st_mode); // S_ISDIR: is directory macro in stat.h file
 }
 
-std::string sanitizepath(const std::string& basedir, const std::string& requestedpath)
+std::string Server::sanitizepath(const std::string& basedir, const std::string& requestedpath)
 {
     char resolvedpath[PATH_MAX];
 
@@ -428,33 +431,9 @@ void Server::handlerequest(int client_socket)
             }
             else
             {
-                servestaticfile(client_socket, sanitizepath);
+                servestaticfile(client_socket, sanitizedpath);
             }
-        //     std::string filepath = rootdir + url;
-        //     if (filepath[filepath.size() - 1] == '/')
-        //         filepath += "index.html";
-            
-        //     std::ifstream file(filepath.c_str());
-        //     if (file)
-        //     {
-        //         std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        //         std::ostringstream oss;
-        //         oss << content.size();
-        //         std::string response = "HTTP/1.1 200 OK\r\n"
-        //                                "Content-Type: text/html\r\n\r\n"
-        //                                "Content-Length: " + oss.str() + "\r\n\r\n"
-        //                                "<html><body>" + content + "</body></html>";
-        //         send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);             
-        //     }
-        //     else
-        //     {
-        //         std::string error = "HTTP/1.1 404 Not Found\r\n"
-        //                             "Content-Type: text/html\r\n\r\n"
-        //                             "<html><body><h1>404 Not Found</h1></body></html>";
-        //         send(client_socket, error.c_str(), error.size(), MSG_DONTWAIT);
-        //     }
         }
-
         else if (method == "POST")
         {
             std::cout << "POST request received" << std::endl;
@@ -470,12 +449,11 @@ void Server::handlerequest(int client_socket)
                 }
             }
             std::string response = "HTTP/1.1 200 OK\r\n"
-                                   "Content-Type: text/html\r\n\r\n"
-                                   "<html><body><h1>File uploaded successfully</h1></body></html>";
+                                "Content-Type: text/html\r\n\r\n"
+                                "<html><body><h1>File uploaded successfully</h1></body></html>";
             send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
 
         }
-
         else if (method == "DELETE")
         {
             std::cout << "DELETE request received" << std::endl;
@@ -483,8 +461,8 @@ void Server::handlerequest(int client_socket)
             if (remove(filepath.c_str()) == 0)
             {
                 std::string response = "HTTP/1.1 200 OK\r\n"
-                                       "Content-Type: text/html\r\n\r\n"
-                                       "<html><body><h1>File deleted successfully</h1></body></html>";
+                                    "Content-Type: text/html\r\n\r\n"
+                                    "<html><body><h1>File deleted successfully</h1></body></html>";
                 send(client_socket, response.c_str(), response.size(), MSG_DONTWAIT);
             }
             else
@@ -496,16 +474,12 @@ void Server::handlerequest(int client_socket)
         {
             severerrorpage(client_socket, 405);
         }
-        // else if (bytesreceived == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-        // {
-        //     return ;
-        // } // Non-blocking socket, no data to read but can not  EAGAIN or EWOULDBLOCK
+    }
+    else
+    {
+        perror("recv failed");
     }
     close(client_socket);
-    else
-        {
-            perror("recv failed");
-        }
 }
 
 

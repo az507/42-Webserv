@@ -55,28 +55,53 @@
 #include <utility>
 #include <string>
 
+// int main() {
+//     // Define server configurations as a vector of <IP, Port>
+//     std::vector<std::pair<std::string, std::string> > servers;
+//     servers.push_back(std::make_pair("", "8080"));       // All interfaces on port 8080
+//     servers.push_back(std::make_pair("127.0.0.1", "9090")); // Localhost on port 9090
+
+//     // Define the root directory for serving files
+//     std::string rootdir = "/var/www"; // Change this to the directory you want to serve
+//     std::map<int, std::string> errorpage;
+//     errorpage.insert(std::make_pair(404, "/errors/404.html"));
+//     errorpage.insert(std::make_pair(500, "/errors/500.html"));
+//     try 
+//     {
+//         // Initialize the server with configurations and root directory
+//         Server server(servers, rootdir);
+
+//         // Start the server
+//         server.run();
+//     } catch (const std::exception& e) {
+//         std::cerr << "Error: " << e.what() << std::endl;
+//         return EXIT_FAILURE;
+//     }
+
+//     return EXIT_SUCCESS;
+// }
+
+#include <vector>
+#include <string>
+#include <iostream>
+
 int main() {
-    // Define server configurations as a vector of <IP, Port>
-    std::vector<std::pair<std::string, std::string> > servers;
-    servers.push_back(std::make_pair("", "8080"));       // All interfaces on port 8080
-    servers.push_back(std::make_pair("127.0.0.1", "9090")); // Localhost on port 9090
+    // Define server info (IP and Port)
+    std::vector<std::pair<std::string, std::string> > serverinfo;
+    serverinfo.push_back(std::make_pair("", "8080")); // Listen on all interfaces, port 8080
+    serverinfo.push_back(std::make_pair("127.0.0.1", "9090")); // Listen on localhost, port 9090
 
-    // Define the root directory for serving files
-    std::string rootdir = "/var/www"; // Change this to the directory you want to serve
-    std::map<int, std::string> errorpage;
-    errorpage.insert(std::make_pair(404, "/errors/404.html"));
-    errorpage.insert(std::make_pair(500, "/errors/500.html"));
-    try 
-    {
-        // Initialize the server with configurations and root directory
-        Server server(servers, rootdir);
+    // Root directory for files
+    std::string rootdir = "/home/xzhang/Documents/webserv/webserv/webserv/src/w";
 
-        // Start the server
+    try {
+        // Initialize and run the server
+        Server server(serverinfo, rootdir);
         server.run();
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return EXIT_FAILURE;
+        std::cerr << "Server error: " << e.what() << std::endl;
+        return 1;
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }

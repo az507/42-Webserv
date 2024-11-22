@@ -43,6 +43,7 @@ class Server
         Server(const std::vector<std::pair<std::string, std::string> > &serverinfo, const std::string &rootdir);  
         ~Server();
         void run();
+        std::map<int, std::string> errorpage;
     
     private:
         std::vector<int> serversockets;
@@ -58,7 +59,7 @@ class Server
         void handlerequest(int clientsocket);
         void severerrorpage(int clientsocket, int statuscode);
         void servestaticfile(int clientsocket, std::string filepath);
-        void serverdirlisting(int clientsocket, std::string &dirpath);
+        void serverdirlisting(int clientsocket, const std::string &dirpath);
         std::string sanitizepath(const std::string& basedir, const std::string& requestedpath);
 
         bool isdirectory(const std::string &path);
