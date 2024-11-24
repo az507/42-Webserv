@@ -4,56 +4,24 @@
 #define handle_error(err) \
     do { perror(err); exit(EXIT_FAILURE); } while (0);
 
-struct ClientInfo {
-    std::string recvbuf;
-    std::string headers;
-    std::string start_line;
-
-    std::string sendbuf;
-};
-
-void recv_from_client(ClientInfo& client, std::vector<int>& sockfds, int sockfd, int epollfd) {
-    int bytes;
-    char *res;
-    char buffer[BUFSIZE];
-    std::vector<int>::iterator it;
-
-    bytes = recv(sockfd, buffer, BUFSIZE, MSG_DONTWAIT);
-    if (bytes == -1) {
-        return ;
-    } else if (!bytes) { // assuming return value of 0 from recv means client closed connection
-        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, NULL) == -1) {
-            handle_error("epoll_ctl");
-        }
-        it = std::find(sockfds.begin(), sockfds.end(), sockfd);
-        assert(it != sockfds.end());
-        sockfds.erase(it);
-        close(sockfd);
-    }
-    res = strstr(buffer, "\r\n");
-    if (!res) {
-        client.recvbuf += buffer;
-    } else {
-        ;
-    }
-}
-
 int main(int argc, char *argv[]) {
     std::vector<int> connfds;
     const char *node, *service;
     int err, connfd, optval = 1;
     struct addrinfo hints, *res;
-    std::vector<ServerInfo> serverInfos;
+    std::vector<ServerInfo> servers;
 
     if (argc == 1) {
         argv[1] = const_cast<char *>("default.conf");
     }
     try {
-        serverInfos = ConfigFile(argv[1]).getServerInfo();
+        servers = ConfigFile(argv[1]).getServerInfo();
     } catch (std::exception const& e) {
         return std::cerr << e.what() << '\n', 1;
     }
-    /*
+    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+        assert(!it->routes.empty());
+    }
     for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
         for (std::vector<std::pair<std::string, std::string> >::const_iterator tmp = it->ip_addrs.begin(); tmp != it->ip_addrs.end(); ++tmp) {
             memset(&hints, 0, sizeof(hints));
@@ -110,78 +78,66 @@ int main(int argc, char *argv[]) {
     bool msgsent = false;
     char buffer[BUFSIZE];
     struct sockaddr addr;
+    std::list<int> clients;
     std::vector<int> sockfds;
-    int epollfd, nfds, sockfd;
+    int nfds, sockfd, min_sockfd;
     std::vector<int>::iterator s_it;
-    std::map<int, ClientInfo> clients;
     struct epoll_event ev, events[MAXEVENTS];
     std::string msg = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\nSent from server to browser";
 
-    epollfd = epoll_create(1);
-    if (epollfd == -1) {
+    Client::setEpollfd(epoll_create(1));
+    if (Client::getEpollfd() == -1) {
         return perror("epoll_create"), 1;
     }
     for (std::vector<int>::const_iterator it = connfds.begin(); it != connfds.end(); ++it) {
         ev.data.fd = *it;
         ev.events = EPOLLIN;
-        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, *it, &ev) == -1) {
+        if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, *it, &ev) == -1) {
             return perror("1) epoll_ctl"), 1;
         }
     }
+    min_sockfd = std::max_element(connfds.begin(), connfds.end());
     while (1) {
-        nfds = epoll_wait(epollfd, events, MAXEVENTS, -1);
+        nfds = epoll_wait(Client::getEpollfd(), events, MAXEVENTS, -1);
         if (nfds == -1) {
             return perror("epoll_wait"), 1;
         }
         for (int i = 0; i < nfds; ++i) {
-            s_it = std::find(connfds.begin(), connfds.end(), events[i].data.fd);
-            if (s_it == connfds.end()) { // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
+            if (events[i].data.fd >= min_sockfd) {{ // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
+                std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i],data.fd));
                 if (events[i].events & EPOLLIN) {
-                    memset(buffer, 0, BUFSIZE);
-                    int bytes = recv(events[i].data.fd, buffer, BUFSIZE, MSG_DONTWAIT);
-                    std::cout << "bytes recv: " << bytes << ", " << buffer << std::endl;
                 }
-                if (events[i].events & EPOLLOUT && !msgsent) {
-                    int bytes = send(events[i].data.fd, msg.c_str(), msg.size(), MSG_DONTWAIT);
-                    msgsent = true;
-                    std::cout << "bytes sent: " << bytes << std::endl;
+                if (events[i].events & EPOLLOUT) {
                 }
             } else {
-                addrlen = 0;
+                //addrlen = 0;
                 memset(&addr, 0, sizeof(addr));
-                sockfd = accept(*s_it, &addr, &addrlen);
+                sockfd = accept(*s_it, &addr, &(addrlen = 0));
                 if (sockfd == -1) {
                     return perror("accept"), 1;
                 }
                 ev.data.fd = sockfd;
                 ev.events = EPOLLIN | EPOLLOUT;
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) {
+                if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, sockfd, &ev) == -1) {
                     return perror("2) epoll_ctl"), 1;
                 }
                 sockfds.push_back(sockfd);
-                assert(!clients.count(sockfd));
-                clients[sockfd] = ClientInfo();
+                clients.push_bacK(Client(sockfd, servers));
             }
         }
     }
 
     for (std::vector<int>::const_iterator it = connfds.begin(); it != connfds.end(); ++it) {
-        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, *it, NULL) == -1) {
+        if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_DEL, *it, NULL) == -1) {
             return perror("3) epoll_ctl"), 1;
         }
     }
     for (std::vector<int>::const_iterator it = sockfds.begin(); it != sockfds.end(); ++it) {
-        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, *it, NULL) == -1) {
+        if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_DEL, *it, NULL) == -1) {
             return perror("4) epoll_ctl"), 1;
         }
     }
     std::for_each(connfds.begin(), connfds.end(), &close);
     std::for_each(sockfds.begin(), sockfds.end(), &close);
-    close(epollfd);
-    */
-//        (void)argc;
-//    (void)argv;
-//
-//        Server server(5);
-//    (void)server;
+    close(Client::getEpollfd());
 }

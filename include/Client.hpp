@@ -15,6 +15,10 @@ class Client {
         void setSockFd(int);
         int getState() const;
         void setFilePath(std::string const&);
+
+        bool operator==(int) const;
+        static void setEpollfd(int);
+        static int getEpollfd() const;
     private:
         enum StateType {
             ERROR = -1,
@@ -30,6 +34,7 @@ class Client {
         void setFinishedState();
         ServerInfo const& initServer(std::vector<ServerInfo> const&) const;
 
+        static int epollfd;
         static const std::string delim;
         static const std::map<int, std::string> http_statuses;
         static const char *content_length, *transfer_encoding;
@@ -37,7 +42,10 @@ class Client {
         std::map<int, std::string> initHttpStatuses() const;
 
         int state;
-        int sockfd;
+
+        int active_fd; // will be recv from this fd
+        int passive_fd;
+
         std::string recvbuf;
         std::string sendbuf;
         std::string filepath;

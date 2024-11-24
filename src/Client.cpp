@@ -1,5 +1,6 @@
 #include "../include/Client1.hpp"
 
+int Client::epollfd = 0;
 const std::string Client::delim = "\r\n\r\n";
 const std::map<int, std::string> http_statuses(initHttpStatuses());
 const char *Client::content_length = "Content-Length", *Client::transfer_encoding = "Transfer-Encoding";
@@ -18,7 +19,8 @@ std::map<int, std::string> Client::initHttpStatuses() const {
 
 Client::Client(int fd, std::vector<ServerInfo> const& servers)
         : state(START_LINE),
-        sockfd(fd),
+        active_fd(fd),
+        passive_fd(-1),
         http_status(200),
         route(NULL),
         server(initServer(servers)),
@@ -31,23 +33,33 @@ Client::Client(int fd, std::vector<ServerInfo> const& servers)
     assert(server);
 }
 
+bool Client::operator==(int sockfd) const {
+
+    return sockfd == active_fd;
+}
+
 void Client::socketRecv() {
     int bytes;
     char buf[BUFSIZE + 1];
 
     assert(state != ERROR);
-    bytes = recv(sockfd, buf, BUFSIZE, MSG_DONTWAIT);
+    bytes = recv(active_fd, buf, BUFSIZE, MSG_DONTWAIT);
     if (bytes <= 0) {
         return setInvalidState();
     }
     parseHttpRequest(buf, bytes);
+    if (state == ERROR) {
+        state = SEND_READY;
+    } else if (state == RECV_DONE) {
+        performRequest(); // may need to loop back to above if assignment state = ERROR happens
+    }
 }
 
 void Client::socketSend() {
     int bytes;
 
     assert(state == ERROR || state == SEND_READY);
-    bytes = send(sockfd, sendbuf.c_str() + send_offset, sendbuf.length() - send_offset, MSG_DONTWAIT);
+    bytes = send(active_fd, sendbuf.c_str() + send_offset, sendbuf.length() - send_offset, MSG_DONTWAIT);
     if (bytes <= 0) {
         return setInvalidState();
     }
@@ -58,6 +70,10 @@ void Client::socketSend() {
     }
 }
 
+void Client::performRequest() {
+    
+}
+
 void Client::setState(int state) {
 
     this->state = state;
@@ -66,6 +82,16 @@ void Client::setState(int state) {
 int Client::getState() const {
 
     return state;
+}
+
+void Client::setEpollfd(int epollfd) {
+
+    Client::epollfd = epollfd;
+}
+
+int Client::getEpollfd() const {
+
+    return Client::epollfd;
 }
 
 RouteInfo const* Client::findRoute() const {
@@ -210,7 +236,7 @@ int Client::trackRecvBytes() {
         return recvbuf.clear(), NEED_MORE;
     }
 }
-
+u
 int Client::parseMsgBody() { // need to handle chunked encoding
     static bool config_flag = false;
 
@@ -248,18 +274,20 @@ void Client::parseHttpRequest(const char *buf, int bytes) {
             case START_LINE:        res = parseStartLine(), continue ;
             case HEADERS:           res = parseHeaders(), continue ;
             case MSG_BODY:          res = parseMsgBody(), continue ;
-            case RECV_DONE:         fillSendBuf(), break ; // may not be able to get everything immediately
-            case ERROR:             fillErrorState(), break ;
+//            case RECV_DONE:         fillSendBuf(), break ; // may not be able to get everything immediately
+//            case ERROR:             fillErrorState(), break ;
             default:                throw std::exception(); // should not reach here
         }
     }
     while (res != NEED_MORE);
 }
 
-void Client::setStartLine(int code) {
+void Client::writeStartLineAndHeaders(int httpcode) {
     std::ostringstream oss;
 
-    oss << "HTTP/1.1 " << code << ' ' << Client::http_statuses[code] << "\r\n";
+    assert(Client::http_statuses.count(http_code));
+    oss << "HTTP/1.1 " << httpcode << ' ' << Client::http_statuses[httpcode] << "\r\n";
+    oss << "Content-Type: " << getContentType() << "\r\n\r\n";
     sendbuf = oss.str();
 }
 
@@ -274,21 +302,14 @@ int Client::getRequestedFile(std::string const& filename) {
     return !ERROR;
 }
 
-void Client::fillSendBuf(int code) { // input can come from cgi script
+void Client::fillSendBuf() { // input can come from cgi script
     size_t pos;
     std::string pathinfo;
     std::ifstream infile;
-    std::ostringstream oss;
     std::string::iterator start, it1, it2, ite;
     std::map<std::string, std::string> query_str;
 
-    oss << "HTTP/1.1 " << code << ' ' << Client::http_statuses[code] << "\r\n";
-    oss << "Content-Type: " << getContentType() << "\r\n\r\n";
-    sendbuf = oss.str();
-    if (state == ERROR) {
-        ;
-        return ;
-    }
+    writeStartLineAndHeaders();
     ite = request_uri.end();
     it1 = start = std::find(request_uri.begin(), ite, '?');
     while (it1 != ite) {
@@ -309,36 +330,57 @@ void Client::fillSendBuf(int code) { // input can come from cgi script
         // may need to extract out QUERY_STRING and other stuff from url
         // prepare environment vars for cgi script
         request_uri[pos] = '\0';
-    } else {
-        infile.open(request_uri);
-        if (!infile.is_open()) {
-
-        }
+    } else if (writeFileToSendbuf(request_uri) != ERROR) {
+        setState(SEND_READY);
     }
 }
 
 void Client::setFinishedState() {
 
-    epoll_ctl(epollfd, EPOLL_CTL_DEL, sockfd, NULL);
-    close(sockfd);
+    epoll_ctl(Client::epollfd, EPOLL_CTL_DEL, active_fd, NULL);
+    close(active_fd);
     state = FINISHED;
 }
 
-int Client::setInvalidState(int err) {
+int Client::writeFileToSendbuf(std::string const& filename) {
+    std::ifstream infile;
+    const char *filestr;
+    
+    filestr = filename.c_str();
+    if (access(filestr, F_OK) == -1) {
+        return setErrorState(404);
+    }
+    infile.open(filestr);
+    if (!infile.is_open()) {
+        return setErrorState(403);
+    }
+    std::copy((std::istreambuf_iterator<char>(infile)),
+        std::istreambuf_iterator<char>(), std::back_inserter(sendbuf));
+    return !ERROR;
+}
+
+void Client::setErrorState(int num) {
+    std::string filename;
 
     setState(ERROR);
-    setStartLine(err);
-    setHeaders();
-    return ERROR;
+    http_code = num;
+    writeStartLineAndHeaders();
+    if (ServerInfo::error_pages.count(http_code)) {
+        filename = ServerInfo::error_pages[http_code];
+        assert(access(filename, F_OK | R_OK) == 0);
+        writeFileToSendbuf(filename); // writeFileToSendbuf() does error checking, but those are meant for request_uri only
+    }
 }
 
 ServerInfo const& Client::initServer(std::vector<ServerInfo> const& servers) const {
-    std::vector<ServerInfo>::const_iterator ite = servers.end();
+    std::vector<ServerInfo>::const_iterator it, ite;
 
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != ite; ++it) {
-        if (it->sockfd == sockfd) {
-            return *it;
+    ite = servers.end();
+    for (it = servers.begin(); it != ite; ++it) {
+        if (it->sockfd == active_fd) {
+            break ;
         }
     }
-    return assert(false), *ite; // should never reach here
+    assert(it != ite); // should never reach end
+    return *it;
 }
