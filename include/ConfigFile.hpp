@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream&, ServerInfo const&);
 
 class ConfigFile {
     public:
-        explicit ConfigFile(const char *);
+        ConfigFile(const char *);
         void printServerInfo() const;
         std::vector<ServerInfo> const& getServerInfo() const;
     private:
