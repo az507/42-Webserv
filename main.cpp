@@ -4,12 +4,24 @@
 #define handle_error(err) \
     do { perror(err); exit(EXIT_FAILURE); } while (0);
 
+void sigchldHandler(int sig) {
+
+    if (sig == SIGCHLD) {
+        while (waitpid(-1, NULL, WNOHANG) > 0) {
+            ;
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     std::vector<int> connfds;
     const char *node, *service;
     int err, connfd, optval = 1;
     struct addrinfo hints, *res;
     std::vector<ServerInfo> servers;
+
+    Client::setEnvp(envp);
+    signal(SIGCHLD, &sigchldHandler);
 
     if (argc == 1) {
         argv[1] = const_cast<char *>("default.conf");
@@ -75,15 +87,18 @@ int main(int argc, char *argv[]) {
     }
 
     socklen_t addrlen;
-    bool msgsent = false;
-    char buffer[BUFSIZE];
     struct sockaddr addr;
-    std::list<int> clients;
-    std::vector<int> sockfds;
+    //std::vector<int> sockfds;
     int nfds, sockfd, min_sockfd;
-    std::vector<int>::iterator s_it;
-    struct epoll_event ev, events[MAXEVENTS];
-    std::string msg = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n\r\nSent from server to browser";
+    std::list<Client> clients;
+    std::list<Client>::iterator c_it;
+    struct epoll_event ev;//, events[MAXEVENTS];
+    std::vector<struct epoll_event> events(MAXEVENTS);
+
+    // timeout recv/write after 10s
+    struct timeval tv;
+    tv.tv_sec = 10;
+    tv.tv_usec = 0;
 
     Client::setEpollfd(epoll_create(1));
     if (Client::getEpollfd() == -1) {
@@ -98,33 +113,64 @@ int main(int argc, char *argv[]) {
     }
     min_sockfd = std::max_element(connfds.begin(), connfds.end());
     while (1) {
-        nfds = epoll_wait(Client::getEpollfd(), events, MAXEVENTS, -1);
+        nfds = epoll_wait(Client::getEpollfd(), events.data(), events.size(), 1e6); // timeout set to 10s here
         if (nfds == -1) {
             return perror("epoll_wait"), 1;
         }
         for (int i = 0; i < nfds; ++i) {
-            if (events[i].data.fd >= min_sockfd) {{ // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
-                std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i],data.fd));
+            if (events[i].data.fd > min_sockfd) { // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
+                c_it = std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i].data.fd));
+                assert(c_it != clients.end());
                 if (events[i].events & EPOLLIN) {
+                    c_it->socketRecv();
                 }
                 if (events[i].events & EPOLLOUT) {
+                    c_it->socketSend();
                 }
             } else {
                 //addrlen = 0;
                 memset(&addr, 0, sizeof(addr));
-                sockfd = accept(*s_it, &addr, &(addrlen = 0));
+                // possible race condition, where client connection attempt may have dropped between epoll_wait() and accept()
+                // if events[i].data.fd is blocking, accept call can potentially block
+                // may need to use fcntl() to set fd to non-blocking
+                sockfd = accept(events[i].data.fd, &addr, &(addrlen = 0));
                 if (sockfd == -1) {
-                    return perror("accept"), 1;
+                    handle_error("accept");
+                }
+                // not sure if this two setsockopt()s are needed when MSG_DONTWAIT is set for recv/send
+                if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+                    handle_error("setsockopt recv");
+                }
+                if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
+                    handle_error("setsockopt send");
                 }
                 ev.data.fd = sockfd;
                 ev.events = EPOLLIN | EPOLLOUT;
                 if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, sockfd, &ev) == -1) {
                     return perror("2) epoll_ctl"), 1;
                 }
-                sockfds.push_back(sockfd);
+                //sockfds.push_back(sockfd);
                 clients.push_bacK(Client(sockfd, servers));
             }
         }
+        std::for_each(clients.begin(), clients.end(), std::mem_fun_ref(&Client::parse));
+        std::for_each(clients.begin(), clients.end(), std::mem_fun_ref(&Client::executeCgi));
+
+        pid_t pid = fork();
+        switch (pid) {
+            case -1:        handle_error("fork");
+            case 0:         execute_script(), return 1; // probably can setup a sighandler that calls waitpid() when SIGCHLD received
+            default:        // registerEvent(), carry on
+        
+        memset(&ev, 0, sizeof(ev));
+        ev.data.fd = pipefd;
+        ev.events = EPOLLIN;
+        if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, pipefd, &ev) == -1) {
+            handle_error("epoll_ctl");
+        }
+
+        // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
+        // clients.erase(c_it, clients.end());
     }
 
     for (std::vector<int>::const_iterator it = connfds.begin(); it != connfds.end(); ++it) {
@@ -138,6 +184,6 @@ int main(int argc, char *argv[]) {
         }
     }
     std::for_each(connfds.begin(), connfds.end(), &close);
-    std::for_each(sockfds.begin(), sockfds.end(), &close);
+//    std::for_each(sockfds.begin(), sockfds.end(), &close);
     close(Client::getEpollfd());
 }
