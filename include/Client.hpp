@@ -10,35 +10,31 @@ class Client {
     public:
         Client(int, std::vector<ServerInfo> const&);
 
-        void socketRecv(int); // could either be from client or cgi
+        void socketRecv(); // could either be from client or cgi
         void socketSend();
-        void setSockFd(int);
         int getPState() const;
         int getIOState() const;
 
         bool operator==(int) const;
+
         static void setEnvp(char **);
         static void setEpollfd(int);
         static int getEpollfd();
     private:
         enum ParseState {
             ERROR = -1,
-            NEED_MORE,
             START_LINE,
             HEADERS,
             MSG_BODY,
             FINISHED,
         };
         enum IOState {
-            RECV_HTTP,
+            RECV_HTTP = 0,
             SEND_HTTP,
             RECV_CGI,
             SEND_CGI,
             CONN_CLOSED,
         };
-
-        int p_state; // at which stage of parsing this object is currently in
-        int io_state; // should object be receiving/sending data at the moment
 
         Client();
         ~Client();
@@ -49,6 +45,8 @@ class Client {
         void setIOState(int);
 
         void setFinishedState();
+
+        std::map<int, std::string> initHttpStatuses() const;
         ServerInfo const& initServer(std::vector<ServerInfo> const&) const;
 
         static char **envp;
@@ -57,32 +55,45 @@ class Client {
         static const std::map<int, std::string> http_statuses;
         static const char *content_length, *transfer_encoding;
 
-        std::map<int, std::string> initHttpStatuses() const;
+        RouteInfo const* findRoute() const;
+        void writeInitialPortion(int);
+        void configureIOMethod();
 
+        void parseHttpRequest(const char *, size_t);
+        bool parseStartLine(const char *, size_t);
+        bool parseHeaders(const char *, size_t);
+        bool parseMsgBody(const char *, size_t);
+        bool trackRecvBytes(const char *, size_t);
+        bool unchunkRequest(const char *, size_t);
+        bool prepareResource();
+        bool writeToFilebuf(std::string const&);
+
+        void registerEvent(int);
+        void executeCgi(int, std::string const&);
+
+        int p_state; // at which stage of parsing this object is currently in
+        int io_state; // should object be receiving/sending data at the moment
+        int http_code;
+        int http_method;
         int active_fd; // will be recv/send from this fd
         int passive_fd;
 
-        // registerEvent()
-        // executeCgi()
+        bool config_flag;
+        bool unchunk_flag;
+        bool track_length;
+        size_t bytes_left;
 
         std::string recvbuf;
-        std::string sendbuf;
+        std::string filebuf;
+        std::string msg_body;
+        std::string request_uri;
+
         RouteInfo const* route;
         ServerInfo const& server;
 
         std::string::const_iterator send_it;
         std::string::const_iterator send_ite;
 
-        bool track_length;
-        bool unchunk_flag;
-        bool config_flag;
-        size_t bytes_left;
-
-        int http_method;
-
-        int http_code;
-        std::string request_uri;
-        std::string msg_body;
         std::map<std::string, std::string> headers;
 };
 

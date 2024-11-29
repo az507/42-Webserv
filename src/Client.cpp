@@ -18,19 +18,20 @@ std::map<int, std::string> Client::initHttpStatuses() const {
     return http_statuses;
 }
 
-Client::Client(int fd, std::vector<ServerInfo> const& servers)
-        : state(START_LINE),
+Client::Client(int fd, std::vector<ServerInfo> const& servers) :
+        p_state(START_LINE),
+        io_state(RECV_HTTP),
+        http_code(200),
+        http_method(0),
         active_fd(fd),
         passive_fd(-1),
-        http_status(200),
-        route(NULL),
-        server(initServer(servers)),
-        recv_offset(0),
-        send_offset(0),
         track_length(false),
         unchunk_flag(false),
+        config_flag(false),
         bytes_left(0)
-{
+        route(NULL),
+        server(initServer(servers)) {
+
     assert(server);
 }
 
@@ -39,38 +40,68 @@ bool Client::operator==(int sockfd) const {
     return sockfd == active_fd;
 }
 
+// inside parseHttpRequest(), it can call prepareResource() which would change this->io_state to either
+// SEND_RECV or SEND_HTTP, meaning that not all data from socket may be read before starting to send data
+// to socket. This could potentially cause problems where socket buffer should be drained first before
+// sending data to client socket
 void Client::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    assert(state != ERROR);
-    bytes = recv(active_fd, buf, BUFSIZE, MSG_DONTWAIT);
-    if (bytes <= 0) {
-        return setInvalidState();
+    if (io_state != RECV_HTTP && io_state != RECV_CGI) {
+        return ;
     }
-    switch (io_state) {
-        case RECV_HTTP:     parseHttpRequest(buf, bytes), break ;
-        case RECV_CGI:      parseCgiOutput(buf, bytes), break ; // both parse funcs may change IOState
-        default:            std::terminate();
+    bytes = recv(active_fd, buf, BUFSIZE, MSG_DONTWAIT);
+    switch (bytes) {
+        case -1:        handle_error("recv");
+        case 0:         setIOState(io_state + 1);
+        default:        if (io_state == RECV_HTTP) {
+                            parseHttpRequest(buf, bytes);
+                        } else if (io_state == RECV_CGI) {
+                            parseCgiOutput(buf, bytes); // both parse funcs may change IOState
+                        } else {
+                            std::terminate();
+                        }
     }
 }
 
 void Client::socketSend() {
     ssize_t bytes;
 
-    assert(io_state == SEND_HTTP || io_state == SEND_CGI);
+    if (io_state != SEND_HTTP && io_state != SEND_CGI) {
+        return ;
+    }
     bytes = send(active_fd, &*send_it, std::distance(send_it, send_ite), MSG_DONTWAIT);
     switch (bytes) {
         case -1:        handle_error("send");
         case 0:         closeConnection(), break ;
+        default:        send_it += bytes;
+                        if (send_it == send_ite) {
+                            if (io_state == SEND_CGI) {
+                                close(active_fd);
+                                std::swap(active_fd = -1, passive_fd);
+                                setIOState(RECV_CGI);
+
+                            } else if (io_state == SEND_HTTP) {
+                                assert(headers.count("Connection"));
+                                std::string& ref - headers["Connection"];
+                                if (ref == "close") {
+                                    setFinishedState();
+                                } else if (ref == "keep-alive") {
+                                    resetState();
+                                }
+                            }
+                        }
     }
-    if (bytes <= 0) {
-        return setInvalidState();
-    }
-    send_it += bytes;
-    if (send_it == send_ite) {
-        setFinishedState();
-    }
+}
+
+void Client::resetState() {
+    int fd = active_fd;
+    ServerInfo const& server = this->server;
+
+    memset(this, 0, sizeof(*this));
+    active_fd = fd;
+    this->server = server;
 }
 
 void Client::setIOState(int state) {
@@ -107,7 +138,6 @@ int Client::getEpollfd() const {
 
     return Client::epollfd;
 }
-
 
 RouteInfo const* Client::findRoute() const {
     size_t findpos, len, max_len;
@@ -187,7 +217,7 @@ bool Client::parseHeaders(const char *buf, size_t bytes) {
         }
     }
     if (http_method == POST_METHOD) {
-        msgbody = recvbuf.erase(0, pos + delim.length());
+        msg_body = recvbuf.erase(0, pos + delim.length());
         setState(MSG_BODY);
     } else {
         setState(FINISHED);
@@ -195,7 +225,7 @@ bool Client::parseHeaders(const char *buf, size_t bytes) {
     return true;
 }
 
-bool Client::unchunkRequest() { // only unchunking of request will require a intermediate temp buffer to selectively read bytes into msgbody
+bool Client::unchunkRequest() { // only unchunking of request will require a intermediate temp buffer to selectively read bytes into msg_body
     uint64_t bytes;
     std::istringstream iss;
     std::string::const_iterator it1, it2, ite;
@@ -216,7 +246,7 @@ bool Client::unchunkRequest() { // only unchunking of request will require a int
             r_it2 = std::find_if(++r_it1, r_ite, std::binary_negate<int(*)(int)>(&isdigit));
             iss.str(std::string(r_it1, r_it2));
             if (!(iss >> bytes)) { // integer overflow
-                return setInvalidState();
+                return setErrorState(8);
             }
             iss.clear();
             if (!bytes) {
@@ -227,7 +257,7 @@ bool Client::unchunkRequest() { // only unchunking of request will require a int
             if (std::distance(it1, ite) < bytes) {
                 break ; // need more bytes, wait for next recv
             }
-            msgbody.insert(msg_body.end(), it1, it1 + bytes);
+            msg_body.insert(msg_body.end(), it1, it1 + bytes);
             it1 = std::find(it1, ite, '\n');
             it2 = it1 + 1; // only after a successful extraction, then we move the it2(old) iterator forward
         } else {
@@ -242,7 +272,7 @@ bool Client::trackRecvBytes(const char *buf, size_t bytes) {
     size_t bytes;
 
     bytes = std::min(bytes_left, bytes);
-    msgbody.append(buf, bytes);
+    msg_body.append(buf, bytes);
     bytes_left -= bytes;
     if (!bytes_left) {
         setState(FINISHED)
@@ -278,12 +308,12 @@ bool Client::parseMsgBody(const char *buf, size_t bytes) { // need to handle chu
     } else if (unchunk_flag) {
         return unchunkRequest(buf, bytes);
     } else {
-        msgbody.append(buf, bytes);
+        msg_body.append(buf, bytes);
         return false; // only stops when eof is detected during recv call
     }
 }
 
-void Client::parseHttpRequest(const char *buf, size_t bytes) {
+v oid Client::parseHttpRequest(const char *buf, size_t bytes) {
     bool res;
 
     do {
@@ -305,7 +335,7 @@ void Client::writeInitialPortion(int httpcode) {
     assert(Client::http_statuses.count(httpcode));
     oss << "HTTP/1.1 " << httpcode << ' ' << Client::http_statuses[httpcode] << "\r\n";
     oss << "Content-Type: " << getContentType() << "\r\n\r\n";
-    sendbuf = oss.str();
+    filebuf = oss.str();
 }
 
 bool Client::prepareResource() { // input can come from cgi script
@@ -350,13 +380,13 @@ bool Client::prepareResource() { // input can come from cgi script
         std::swap(active_fd, passive_fd = pipefds[1]);
         // assuming its a POST request to CGI script
         assert(http_method == POST_METHOD);
-        send_it = msgbody.begin();
-        send_ite = msgbody.end();
+        send_it = msg_body.begin();
+        send_ite = msg_body.end();
         setIOState(SEND_CGI);
 
-    } else if (writeFileToSendbuf(request_uri) != ERROR) { // only if its non-cgi GET_REQUEST
-        send_it = sendbuf.begin();
-        send_ite = sendbuf.end();
+    } else if (writeToFilebuf(request_uri)) { // only if its non-cgi GET_REQUEST
+        send_it = filebuf.begin();
+        send_ite = filebuf.end();
         setIOState(SEND_HTTP);
     } else {
         return true;
@@ -376,7 +406,7 @@ void Client::registerEvent(int fd) {
 }
 
 void Client::executeCgi(int pipefd, std::string const& pathinfo) {
-    std::vector<char *> argv;
+    std::vector<char *> argv(3);
     std::vector<char *> envp;
 
     if (dup2(pipefd, STDIN_FILENO) == -1 || dup2(pipefd, STDOUT_FILENO) == -1) {
@@ -385,9 +415,9 @@ void Client::executeCgi(int pipefd, std::string const& pathinfo) {
     if (close(pipefd) == -1) {
         handle_error("close");
     }
-    argv.push_back(std::strdup(request_uri.c_str()));
-    argv.push_back(std::strdup(pathinfo.c_str()));
-    argv.push_back(NULL);
+    argv[0] = std::strdup(request_uri.c_str());
+    argv[1] = std::strdup(pathinfo.c_str());
+    argv[2] = NULL;
     for (int i = 0; Client::envp[i] != NULL; ++i) {
         envp.push_back(std::strdup(envp[i]));
     }
@@ -408,20 +438,20 @@ void Client::setFinishedState() {
     state = FINISHED;
 }
 
-int Client::writeFileToSendbuf(std::string const& filename) {
+bool Client::writeToFilebuf(std::string const& filename) {
     std::ifstream infile;
     const char *filestr;
     
     filestr = filename.c_str();
     if (access(filestr, F_OK) == -1) {
-        return setErrorState(404);
+        return setErrorState(404), false;
     }
     infile.open(filestr);
     if (!infile.is_open()) {
-        return setErrorState(403);
+        return setErrorState(403), false;
     }
-    std::copy((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>(), std::back_inserter(sendbuf));
-    return !ERROR;
+    std::copy((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>(), std::back_inserter(filebuf));
+    return true;
 }
 
 void Client::setErrorState(int num) {
