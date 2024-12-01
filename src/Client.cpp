@@ -275,13 +275,15 @@ bool Client::trackRecvBytes(const char *buf, size_t bytes) {
     msg_body.append(buf, bytes);
     bytes_left -= bytes;
     if (!bytes_left) {
-        setState(FINISHED)
+        setPState(FINISHED);
         return true;
+    } else {
+        return false;
     }
-    return false;
 }
 
 void Client::configureIOMethod() {
+    static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
 
     if (headers.count(content_length) && headers.count(transfer_encoding)) {
         setInvalidState(); // both headers should never exist together
@@ -302,8 +304,10 @@ bool Client::parseMsgBody(const char *buf, size_t bytes) { // need to handle chu
         config_flag = true;
     }
     // Content-Length and Transfer-Encoding should never be included together
-    // only insert the needed info into msg_body vector
-    if (track_length) {
+    // only insert the needed info into msg_body string
+    if (p_state == ERROR) {
+        return true;
+    } else if (track_length) {
         return trackRecvBytes(buf, bytes);
     } else if (unchunk_flag) {
         return unchunkRequest(buf, bytes);
@@ -313,7 +317,7 @@ bool Client::parseMsgBody(const char *buf, size_t bytes) { // need to handle chu
     }
 }
 
-v oid Client::parseHttpRequest(const char *buf, size_t bytes) {
+void Client::parseHttpRequest(const char *buf, size_t bytes) {
     bool res;
 
     do {
@@ -321,19 +325,19 @@ v oid Client::parseHttpRequest(const char *buf, size_t bytes) {
             case START_LINE:        res = parseStartLine(buf, bytes), continue ;
             case HEADERS:           res = parseHeaders(buf, bytes), continue ;
             case MSG_BODY:          res = parseMsgBody(buf, bytes), continue ; // IF GET REQUEST, SHOULDNT ENTER HERE
-            case ERROR:
             case FINISHED:          res = prepareResource(), continue ;
+            case ERROR:             break ;
             default:                throw std::exception(); // should not reach here
         }
     }
     while (res);
 }
 
-void Client::writeInitialPortion(int httpcode) {
+void Client::writeInitialPortion() {
     std::ostringstream oss;
 
-    assert(Client::http_statuses.count(httpcode));
-    oss << "HTTP/1.1 " << httpcode << ' ' << Client::http_statuses[httpcode] << "\r\n";
+    assert(Client::http_statuses.count(http_code));
+    oss << "HTTP/1.1 " << http_code << ' ' << Client::http_statuses[http_code] << "\r\n";
     oss << "Content-Type: " << getContentType() << "\r\n\r\n";
     filebuf = oss.str();
 }
@@ -456,14 +460,15 @@ bool Client::writeToFilebuf(std::string const& filename) {
 
 void Client::setErrorState(int num) {
 
-    setState(ERROR);
-    httpcode = num;
-    if (ServerInfo::error_pages.count(http_code)) {
-        request_uri = ServerInfo::error_pages[http_code];
-        assert(!access(request_uri, F_OK | R_OK));
-    } else {
-        request_uri.clear();
+    http_code = num;
+    setPState(ERROR);
+    setIOState(SEND_HTTP);
+    writeInitialPortion();
+    if (ServerInfo::error_pages.count(http_code) && !access(request_uri, F_OK | R_OK)) {
+        writeToFilebuf(ServerInfo::error_pages[http_code]);
     }
+    send_it = filebuf.begin();
+    send_ite = filebuf.end();
 }
 
 ServerInfo const& Client::initServer(std::vector<ServerInfo> const& servers) const {
