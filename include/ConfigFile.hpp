@@ -35,6 +35,7 @@ struct ServerInfo {
     static int max_clients;
     static std::map<int, std::string> error_pages;
 
+    std::vector<int> connfds;
     std::vector<RouteInfo> routes;
     std::vector<std::string> names;
     std::vector<std::pair<std::string, std::string> > ip_addrs;

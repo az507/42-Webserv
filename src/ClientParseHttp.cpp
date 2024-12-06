@@ -1,19 +1,29 @@
 #include "Client.hpp"
 
 void Client::parseHttpRequest(const char *buf, size_t bytes) {
-    bool res;
+    int res;
 
+    assert(io_state != ERROR);
+    if (io_state == MSG_BODY && !unchunk_flag) {
+        if (track_length) {
+            bytes = std::min(bytes_left, bytes);
+        }
+        msg_body.append(buf, bytes);
+    } else {
+        recvbuf.append(buf, bytes);
+    }
     do {
         switch (p_state) {
-            case START_LINE:        res = parseStartLine(buf, bytes), continue ;
-            case HEADERS:           res = parseHeaders(buf, bytes), continue ;
-            case MSG_BODY:          res = parseMsgBody(buf, bytes), continue ; //GET REQUEST==DONT ENTER HERE
-            case FINISHED:          res = prepareResource(), continue ;
+            case START_LINE:        res = parseStartLine(); continue ;
+            case HEADERS:           res = parseHeaders(bytes); continue ;
+            case MSG_BODY:          res = parseMsgBody(bytes); continue ; // DONT ENTER IF NON-POST REQUEST
+            case FINISHED:          res = performRequest(); continue ;
             case ERROR:             break ;
-            default:                throw std::exception(); // should not reach here
+            default:                std::terminate(); // should not reach here
         }
     }
     while (res);
+    std::cout << "request_uri: " << request_uri << '\n';
 }
 
 RouteInfo const* Client::findRouteInfo() const {
@@ -37,97 +47,160 @@ RouteInfo const* Client::findRouteInfo() const {
     return &*it;
 }
 
-bool Client::parseStartLine(const char *buf, size_t bytes) {
+int Client::parseStartLine() {
     size_t pos;
+    int http_method = 0;
     std::istringstream iss;
     std::string http_str, http_version;
+    static const std::string newline = "\r\n";
     static const std::string methods[] = { "GET", "POST", "DELETE" };
 
-    pos = recvbuf.append(buf, bytes).find("\r\n");
+    pos = recvbuf.find(newline);
     if (pos == std::string::npos) {
-        return false;
+        return 0;
     }
     iss.str(recvbuf.substr(0, pos));
     if (!(iss >> http_str) || !(iss >> request_uri) || !(iss >> http_version)) {
-        setErrorState(1);
+        return setErrorState(1), 1;
     }
     for (int i = 0; i < 3; ++i) {
         if (http_str == methods[i]) {
-            http_method = !i ? 1 : i << 1, break ;
+            http_method = 1 << i;
+            break ;
         }
     }
+    assert(recvbuf.length() >= pos + newline.length());
+    recvbuf.erase(0, pos + newline.length());
     if (!http_method) {
         setErrorState(404);
     } else if (http_version != "HTTP/1.1") {
         setErrorState(4); // arbitrary numbers for now
     } else {
-        assert((route = findRouteInfo()));
+        route = findRouteInfo();
+        assert(route);
         // Directory where file should be searched from
         // PATH_INFO could be in uri, eg /infile in .../script.cgi/infile
+        this->http_method = http_method;
         request_uri.replace(0, request_uri.find(route->prefix_str), route->root);
-        recvbuf.erase(0, pos + 2);
-        setState(HEADERS);
+        setPState(HEADERS);
     }
-    return true;
+    return 1;
 }
 
-bool Client::parseHeaders(const char *buf, size_t bytes) {
-    size_t pos;
+int Client::parseHeaders(size_t& bytes) {
+    size_t pos, pos1;
     std::string buf;
-    std::stringstream oss;
+    std::istringstream iss;
+    static const std::string delim = "\r\n\r\n";
 
-    pos = recvbuf.append(buf, bytes).find(delim);
+    pos = recvbuf.find(delim);
     if (pos == std::string::npos) {
-        return false;
+        return 0;
     }
-    oss.str(recvbuf.substr(0, pos));
-    while (!getline(oss, buf).eof()) {
-        if (!oss) {
-            oss.exceptions(oss.rdstate());
+    iss.str(recvbuf.substr(0, pos));
+    while (!getline(iss, buf).eof()) {
+        if (!iss) {
+            iss.exceptions(iss.rdstate());
         } else {
-            pos = str.find(':');
-            assert(pos != std::string::npos);
-            headers[buf.substr(0, pos)] = buf.substr(pos + 2);
+            pos1 = buf.find(':');
+            if (pos1 != std::string::npos) {
+                headers[buf.substr(0, pos1)] = buf.substr(pos1 + 2, buf.length() - pos1 - 3); // + 2 for "\r\n"
+            }
         }
     }
+    std::copy(headers.begin(), headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
+    if (!configureIOMethod(headers)) {
+        return -1;
+    }
     if (http_method == POST_METHOD) {
-        msg_body = recvbuf.erase(0, pos + delim.length());
-        setState(MSG_BODY);
+        if (unchunk_flag) {
+            recvbuf.erase(0, pos + delim.length());
+        } else {
+            msg_body.append(recvbuf.begin() + delim.length() + pos, recvbuf.end());
+            recvbuf.clear();
+            if (track_length) {
+                assert(bytes_left >= msg_body.length());
+                bytes = msg_body.length();
+            }
+        }
+        setPState(MSG_BODY);
     } else {
-        setState(FINISHED);
+        setPState(FINISHED);
+    }
+    return 1;
+}
+
+int Client::parseMsgBody(size_t bytes) { // need to handle chunked encoding
+
+    if (track_length) {
+        return trackRecvBytes(bytes);
+    } else if (unchunk_flag) {
+        return unchunkRequest();
+    } else {
+        return 0; // only stops when eof is detected during recv call
+    }
+}
+
+bool Client::configureIOMethod(std::map<std::string, std::string> const& headers) {
+    static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
+
+    if (headers.count(content_length) && headers.count(transfer_encoding)) {
+        setErrorState(1); // both headers should never exist together
+        return false;
+    }
+    if (headers.count(content_length)) {
+        track_length = true;
+        if (!(std::istringstream(headers.find(content_length)->second) >> bytes_left)) { // num too large
+            setErrorState(1);
+            return false;
+        }
+    }
+    if (headers.count(transfer_encoding) && headers.find(transfer_encoding)->second == "chunked") {
+        unchunk_flag = true;
     }
     return true;
 }
 
-bool Client::unchunkRequest() { // only unchunking of request will require a intermediate temp buffer to selectively read bytes into msg_body
+int Client::trackRecvBytes(size_t bytes) {
+
+    assert(bytes <= bytes_left);
+    bytes_left -= bytes;
+    if (!bytes_left) {
+        return setPState(FINISHED), 1;
+    } else {
+        return 0;
+    }
+}
+
+int Client::unchunkRequest() { // only unchunking of request will require a intermediate temp buffer to selectively read bytes into msg_body
     uint64_t bytes;
     std::istringstream iss;
     std::string::const_iterator it1, it2, ite;
     std::string::const_reverse_iterator r_it1, r_it2, r_ite;
-    const char *delim_str = delim.c_str();
-    const size_t delim_length = delim.length();
+    static const std::string newline = "\r\n";
 
     it1 = it2 = recvbuf.begin();
     ite = recvbuf.end();
     r_ite = recvbuf.rend();
     while (1) {
         it1 = std::find(it1, ite, '\r');
-        if (it1 == ite || std::distance(it1, ite) < delim_length) {
+        if (it1 == ite || std::distance(it1, ite) < static_cast<std::ptrdiff_t>(newline.length())) {
             break ;
         }
-        if (!strncmp(&*it1, delim_str, delim_length)) { // check if its "\r\n\r\n"
-            r_it1 = it1;
-            r_it2 = std::find_if(++r_it1, r_ite, std::binary_negate<int(*)(int)>(&isdigit));
+        if (!strncmp(&*it1, newline.c_str(), newline.length())) { // check if its "\r\n"
+            r_it1 = recvbuf.rend() - std::distance(static_cast<std::string::const_iterator>(recvbuf.begin()), it1) - 1;
+            //r_it2 = std::find_if(++r_it1, r_ite, std::unary_negate<std::pointer_to_unary_function<int, int> >(std::ptr_fun(&isdigit)));
+            r_it2 = std::find_if(++r_it1, r_ite, std::not1(std::ptr_fun(&isdigit)));
             iss.str(std::string(r_it1, r_it2));
             if (!(iss >> bytes)) { // integer overflow
-                return setErrorState(8), true;
+                return setErrorState(8), -1;
             }
             iss.clear();
             if (!bytes) {
-                return setPState(FINISHED), true;
+                return setPState(FINISHED), 1;
             }
-            std::advance(it1, delim_length);
-            if (std::distance(it1, ite) < bytes) {
+            std::advance(it1, newline.length());
+            if (std::distance(it1, ite) < static_cast<std::ptrdiff_t>(bytes)) {
                 break ; // need more bytes, wait for next recv
             }
             msg_body.insert(msg_body.end(), it1, it1 + bytes);
@@ -137,54 +210,6 @@ bool Client::unchunkRequest() { // only unchunking of request will require a int
             ++it1;
         }
     }
-    recvbuf.erase(recvbuf.begin(), it2);
-    return false;
-}
-
-bool Client::trackRecvBytes(const char *buf, size_t bytes) {
-    size_t bytes;
-
-    bytes = std::min(bytes_left, bytes);
-    msg_body.append(buf, bytes);
-    bytes_left -= bytes;
-    if (!bytes_left) {
-        return setPState(FINISHED), true;
-    } else {
-        return false;
-    }
-}
-
-void Client::configureIOMethod() {
-    static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
-
-    if (headers.count(content_length) && headers.count(transfer_encoding)) {
-        setInvalidState(); // both headers should never exist together
-    }
-    if (headers.count(content_length)) {
-        track_length = true;
-        bytes_left = atoi(headers[content_length].c_str());
-    }
-    if (headers.count(transfer_encoding) && headers[transfer_encoding] == "chunked") {
-        unchunk_request = true;
-    }
-}
-
-bool Client::parseMsgBody(const char *buf, size_t bytes) { // need to handle chunked encoding
-
-    if (!config_flag) {
-        configureIOMethod();
-        config_flag = true;
-    }
-    // Content-Length and Transfer-Encoding should never be included together
-    // only insert the needed info into msg_body string
-    if (p_state == ERROR) {
-        return true;
-    } else if (track_length) {
-        return trackRecvBytes(buf, bytes);
-    } else if (unchunk_flag) {
-        return unchunkRequest(buf, bytes);
-    } else {
-        msg_body.append(buf, bytes);
-        return false; // only stops when eof is detected during recv call
-    }
+    recvbuf.erase(recvbuf.begin(), recvbuf.end() - std::distance(static_cast<std::string::const_iterator>(recvbuf.begin()), it2));
+    return 0;
 }

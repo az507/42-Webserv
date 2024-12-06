@@ -16,14 +16,17 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
     while (!getline(infile, line).eof()) {
         if (!infile) {
             infile.exceptions(infile.rdstate());
-        } else if (!line.empty() && line.find_first_not_of(" \t\n\v\f\r") != std::string::npos) {
+        } else if (!line.empty() && std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun(&isspace))) != line.end()) {
+            //std::unary_negate<std::pointer_to_unary_function<int, int> >(std::ptr_fun(&isspace))) != line.end()) {
+
             pos = line.find('=');
             if (pos == std::string::npos) {
                 line.erase(std::remove_if(line.begin(), line.end(), &isspace), line.end());
                 if (line == "server") {
+                    std::cout << "\t in here, creating another server block\n";
                     servers.push_back((ServerInfo){});
                 } else if (!line.compare(0, 8, "location")) {
-                    servers.at(servers.size() - 1).routes.push_back((RouteInfo){}); // std::vector<>::at should throw exception if server.empty() == true
+                    servers.at(servers.size() - 1).routes.push_back((RouteInfo){}); //std::vector<>::at should throw exception if server.empty()
                     servers.back().routes.back().prefix_str = line.substr(8);
                 } else {
                     throw std::runtime_error(std::string("Unexpected token: ") + line);
@@ -51,6 +54,7 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
 }
 
 std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
+
     os << std::setw(20) << "===RouteInfo===\n";
     os << std::setw(20) << "dir_list: " << std::boolalpha << route.dir_list << '\n';
     os << std::setw(20) << "http_methods: ";
@@ -70,6 +74,8 @@ std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
 }
 
 std::ostream& operator<<(std::ostream& os, ServerInfo const& serv) {
+    std::ios oldstate(std::cout.rdbuf());
+
     os << "===ServerInfo===\nserver_names: ";
     std::copy(serv.names.begin(), serv.names.end(), std::ostream_iterator<std::string>(os, ", "));
     os.put('\n');
@@ -77,11 +83,15 @@ std::ostream& operator<<(std::ostream& os, ServerInfo const& serv) {
     for (std::vector<std::pair<std::string, std::string> >::const_iterator it = serv.ip_addrs.begin(); it != serv.ip_addrs.end(); ++it) {
         os << "-->" << it->first << ':' << it->second << '\n' << std::setw(17);
     }
+//    os << "Connfds: ";
+//    *std::copy(serv.connfds.begin(), serv.connfds.end(), std::ostream_iterator<int>(os, ", ")) = '\n';
     std::copy(serv.routes.begin(), serv.routes.end(), std::ostream_iterator<RouteInfo>(os, "\n"));
+    os.copyfmt(oldstate);
     return os;
 }
 
 void ConfigFile::printServerInfo() const {
+
     std::cout << "max_clients: " << ServerInfo::max_clients << '\n';
     std::cout << "error_pages: " << std::setw(4);
     for (std::map<int, std::string>::const_iterator it = ServerInfo::error_pages.begin(); it != ServerInfo::error_pages.end(); ++it) {
@@ -91,10 +101,12 @@ void ConfigFile::printServerInfo() const {
 }
 
 std::vector<ServerInfo> const& ConfigFile::getServerInfo() const {
+
     return servers;
 }
 
 void *ConfigFile::convertIdxToAddr(int idx) {
+
     switch (idx) {
         case LISTEN:        return reinterpret_cast<void *>(&servers.back().ip_addrs);
         case SERVER_NAME:   return reinterpret_cast<void *>(&servers.back().names);
@@ -107,11 +119,12 @@ void *ConfigFile::convertIdxToAddr(int idx) {
         case DFL_FILE:      return reinterpret_cast<void *>(&servers.back().routes.back().dfl_file);
         case CGI_EXTENSION: return reinterpret_cast<void *>(&servers.back().routes.back().cgi_extension);
         case UPLOAD_DIR:    return reinterpret_cast<void *>(&servers.back().routes.back().upload_dir);
+        default:            std::terminate();
     }
-    return assert(false), reinterpret_cast<void *>(NULL);
 }
 
 void ConfigFile::dirListHandler(std::vector<std::string> const& values, void *addr) {
+
     *(reinterpret_cast<bool *>(addr)) = values.back() == "on" ? true : false;
 }
 
@@ -158,6 +171,7 @@ void ConfigFile::errorPageHandler(std::vector<std::string> const& values, void *
 }
 
 void ConfigFile::maxClientsHandler(std::vector<std::string> const& values, void *addr) {
+
     *(reinterpret_cast<int *>(addr)) = atoi(values.back().c_str());
 }
 
@@ -183,15 +197,17 @@ void ConfigFile::ipAddrsHandler(std::vector<std::string> const& values, void *ad
 }
 
 void ConfigFile::defaultStringHandler(std::vector<std::string> const& values, void *addr) {
+
     *(reinterpret_cast<std::string *>(addr)) = values.back();
 }
 
 void ConfigFile::defaultVectorHandler(std::vector<std::string> const& values, void *addr) {
+
     std::copy(values.begin(), values.end(), std::back_inserter(*(reinterpret_cast<std::vector<std::string> *>(addr))));
 }
 
-std::vector<void (ConfigFile::*)(std::vector<std::string> const&, void *)> ConfigFile::initSetters() const {
-    std::vector<void (ConfigFile::*)(std::vector<std::string> const&, void *)> setters(11);
+std::vector<void(ConfigFile::*)(std::vector<std::string> const&, void *)> ConfigFile::initSetters() const {
+    std::vector<void(ConfigFile::*)(std::vector<std::string> const&, void *)> setters(11);
 
     setters[0] = &ConfigFile::ipAddrsHandler;
     setters[1] = &ConfigFile::defaultVectorHandler;
