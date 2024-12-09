@@ -4,7 +4,8 @@ void Client::parseHttpRequest(const char *buf, size_t bytes) {
     int res;
 
     assert(io_state != ERROR);
-    if (io_state == MSG_BODY && !unchunk_flag) {
+    //if (io_state == MSG_BODY && !unchunk_flag) {
+    if (p_state == MSG_BODY && !unchunk_flag) {
         if (track_length) {
             bytes = std::min(bytes_left, bytes);
         }
@@ -23,7 +24,7 @@ void Client::parseHttpRequest(const char *buf, size_t bytes) {
         }
     }
     while (res);
-    std::cout << "request_uri: " << request_uri << '\n';
+    //std::cout << "request_uri: " << request_uri << '\n';
 }
 
 RouteInfo const* Client::findRouteInfo() const {
@@ -108,7 +109,7 @@ int Client::parseHeaders(size_t& bytes) {
             }
         }
     }
-    std::copy(headers.begin(), headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
+    //std::copy(headers.begin(), headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
     if (!configureIOMethod(headers)) {
         return -1;
     }

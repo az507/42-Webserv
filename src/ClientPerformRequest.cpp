@@ -15,11 +15,11 @@ int Client::performRequest() {
             default:                    std::terminate();
         }
         setIOState(SEND_HTTP);
+        if (p_state != ERROR) {
+            setPState(START_LINE);
+        }
     } else {
         runCgiScript(reqInfo);
-    }
-    if (p_state != ERROR) {
-        setPState(START_LINE);
     }
     return res;
 }
@@ -45,7 +45,7 @@ void Client::writeInitialPortion() {
     oss << conn << ": ";
     if (headers.count(conn)) {
         oss << headers[conn];
-        std::cout << "1-Connection: " << headers[conn];
+        //std::cout << "1-Connection: " << headers[conn];
     } else {
         oss << "close";
     }
@@ -63,7 +63,8 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
     pos = request_uri.find('?'); // get PATH_INFO
     if (pos != std::string::npos) {
         reqInfo.first = request_uri.substr(pos + 1);
-        request_uri[pos] = '\0';
+        request_uri.erase(pos);
+        //request_uri[pos] = '\0';
     }
     if (stat(request_uri.c_str(), &statbuf) == 0 && (statbuf.st_mode & S_IFMT) == S_IFDIR) {
         if (route && route->dir_list) {
@@ -84,8 +85,11 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
     if (route && !route->cgi_extension.empty()
         && (pos = request_uri.find(route->cgi_extension)) != std::string::npos) { // is cgi or not
 
-        reqInfo.second = request_uri.substr(pos + route->cgi_extension.length() + 1); // get QUERY_STRING
-        request_uri[pos] = '\0';
+        reqInfo.second = request_uri.substr(pos + route->cgi_extension.length()); // get QUERY_STRING
+        if (reqInfo.second.empty()) {
+            reqInfo.second = "/";
+        }
+        //request_uri[pos] = '\0';
     }
     return reqInfo;
 }
@@ -95,8 +99,8 @@ int Client::performGetMethod() {
     if (!writeToFilebuf(request_uri)) {
         return -1;
     }
-    std::cout << "filebuf.length(): " << filebuf.length() << '\n';
-    std::cout << "filebuf:\n" << filebuf << '\n';
+//    std::cout << "filebuf.length(): " << filebuf.length() << '\n';
+//    std::cout << "filebuf:\n" << filebuf << '\n';
     send_it = filebuf.begin();
     send_ite = filebuf.end();
     return 0;
@@ -137,7 +141,7 @@ int Client::writeToFilebuf(std::string const& filename) {
     std::ifstream infile;
     
     filestr = filename.c_str();
-    std::cout << "filestr: " << filestr << '\n';
+    //std::cout << "filestr: " << filestr << '\n';
     if (access(filestr, F_OK) == -1) {
         return setErrorState(404), 0;
     }

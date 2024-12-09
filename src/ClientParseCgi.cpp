@@ -4,14 +4,15 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
     int res;
 
     assert(io_state != ERROR);
-    if (io_state == MSG_BODY && unchunk_flag) {
+    if (p_state == MSG_BODY && unchunk_flag) {
         recvbuf.append(buf, bytes);
     } else {
-        if (io_state == MSG_BODY && track_length) {
+        if (p_state == MSG_BODY && track_length) {
             bytes = std::min(bytes_left, bytes);
         }
         msg_body.append(buf, bytes);
     }
+    //std::cout << buf << '\n';
     do {
         switch (io_state) {
             case START_LINE:    res = ignoreStartLine(); continue ;

@@ -16,6 +16,17 @@ void Client::setEnvp(const char **envp) {
     Client::envp = envp;
 }
 
+void Client::closeFds() {
+
+    if (active_fd > 0) {
+        close(active_fd);
+    }
+    if (passive_fd > 0) {
+        close(passive_fd);
+    }
+    active_fd = passive_fd = -1;
+}
+
 bool Client::isConnClosed() const {
 
     return io_state == CONN_CLOSED;

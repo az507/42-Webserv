@@ -18,9 +18,54 @@ Client::Client(int connfd, std::vector<ServerInfo> const& servers) :
         
 }
 
+bool Client::operator!=(int sockfd) const {
+
+    return !(*this == sockfd);
+}
+
 bool Client::operator==(int sockfd) const {
 
     return sockfd == active_fd;
+}
+
+std::ostream& operator<<(std::ostream& os, Client const& obj) {
+    static const char *io_states[] = {
+        "RECV_HTTP",
+        "SEND_HTTP",
+        "RECV_CGI",
+        "SEND_CGI",
+        "CONN_CLOSED",
+    };
+    static const char *parse_states[] = { // starts from -1
+        "ERROR",
+        "START_LINE",
+        "HEADERS",
+        "MSG_BODY",
+        "FINISHED",
+    };
+
+    //os << "p_state nbr: " << obj.p_state << '\n';
+    os << "p_state: " << parse_states[obj.p_state + 1] << '\n';
+    //os << "io_state nbr: " << obj.io_state << '\n';
+    os << "io_state: " << io_states[obj.io_state] << '\n';
+    os << "http_code: " << obj.http_code << '\n';
+    os << "http_method: " << obj.http_method << '\n';
+    os << "active_fd: " << obj.active_fd << '\n';
+    os << "passive_fd: " << obj.passive_fd << '\n';
+    os << std::boolalpha;
+    os << "unchunk_flag: " << obj.unchunk_flag << '\n';
+    os << "track_length: " << obj.track_length << '\n';
+    os << "bytes_left: " << obj.bytes_left << '\n';
+    os << "recvbuf: " << obj.recvbuf << '\n';
+    os << "filebuf: " << obj.filebuf << '\n';
+    os << "msg_body: " << obj.msg_body << '\n';
+    os << "request_uri: " << obj.request_uri << '\n';
+    // os << obj.route << '\n';
+    // os << obj.server << '\n';
+    os << "send_ite - send_it: " << std::distance(obj.send_it, obj.send_ite) << '\n';
+    std::copy(obj.headers.begin(), obj.headers.end(),
+        std::ostream_iterator<std::map<std::string, std::string>::value_type>(os, "\n\n"));
+    return os;
 }
 
 // inside parseHttpRequest(), it can call prepareResource() which would change this->io_state to either
@@ -39,15 +84,21 @@ void Client::socketRecv() {
         case -1:        handle_error("recv");
         case 0:
                         if (io_state == RECV_HTTP) { // client closed connection ?
+                            //std::terminate();
                             closeConnection();
+                            std::cout << "exiting..." << std::endl;
+                            exit(1);
                         } else {
+                            //throw std::vector<int>(5);
                             send_it = msg_body.begin();
                             send_ite = msg_body.end();
+                            close(active_fd);
+                            std::swap(active_fd = -1, passive_fd);
                             setIOState(SEND_HTTP);      // still unsure about this part
                         }
                         break ;
         default:        buf[bytes] = '\0';
-                        std::cout << buf << '\n';
+                        //std::cout << buf << '\n';
                         switch (io_state) {
                             case RECV_HTTP:     parseHttpRequest(buf, bytes); break ;
                             case RECV_CGI:      parseCgiOutput(buf, bytes); break ; // both parse funcs may change IOState
@@ -60,15 +111,18 @@ void Client::socketSend() {
     ssize_t bytes;
     std::ptrdiff_t dist;
 
+//    std::cout << "io_state in socketSend(): " << io_state << std::endl;
     if (io_state != SEND_HTTP && io_state != SEND_CGI) {
         return ;
     }
     dist = std::distance(send_it, send_ite);
-    assert(dist > 0);
+    //assert(dist > 0);
     bytes = send(active_fd, &*send_it, dist, MSG_DONTWAIT);
     switch (bytes) {
-        case -1:        handle_error("send");
-        case 0:         if (io_state == SEND_HTTP) {
+        // send returns -1 when broken pipe for cgi, SIGPIPE gets sent, for now assume that connection is broken
+        case -1:
+        case 0:         perror("send");
+                        if (io_state == SEND_HTTP) {
                             closeConnection();
                         } else {
                             setIOState(RECV_CGI);
@@ -85,8 +139,6 @@ void Client::advanceSendIterators(size_t bytes) {
         switch (io_state) {
             case SEND_CGI:
                                 {
-                                    close(active_fd);
-                                    std::swap(active_fd = -1, passive_fd);
                                     setIOState(RECV_CGI);
                                     break ;
                                 }
@@ -159,6 +211,7 @@ void Client::deleteEvent(int fd) {
 void Client::setErrorState(int num) {
     std::map<int, std::string>::const_iterator it;
 
+    throw std::runtime_error("ErrorState");
     http_code = num;
     setPState(ERROR);
     setIOState(SEND_HTTP);

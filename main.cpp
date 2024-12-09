@@ -6,9 +6,13 @@
 #include <sys/wait.h>
 
 void sigchldHandler(int sig) {
+    pid_t pid;
 
     if (sig == SIGCHLD) {
-        while (waitpid(-1, NULL, WNOHANG) > 0);
+        while ((pid = waitpid(-1, NULL, WNOHANG)) > 0);
+        if (pid == -1) {
+            errno = 0;
+        }
     }
 }
 
@@ -20,8 +24,9 @@ int main(int argc, char *argv[], char *envp[]) {
     struct addrinfo hints, *res;
     std::vector<ServerInfo> servers;
 
-    Client::setEnvp(const_cast<const char **>(envp));
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGCHLD, &sigchldHandler);
+    Client::setEnvp(const_cast<const char **>(envp));
 
     if (argc == 1) {
         argv[1] = const_cast<char *>("misc/default.conf");
@@ -104,7 +109,7 @@ int main(int argc, char *argv[], char *envp[]) {
             if (!tmp->root.empty() && tmp->root.find('/') == std::string::npos && pwd) {
                 tmp->root.insert(tmp->root.begin(), '/');
                 tmp->root.insert(0, pwd);
-                std::cout << "tmp->root: " << tmp->root << '\n';
+                //std::cout << "tmp->root: " << tmp->root << '\n';
             }
         }
     }
@@ -144,33 +149,49 @@ int main(int argc, char *argv[], char *envp[]) {
     }
     //std::copy(servers.begin(), servers.end(), std::ostream_iterator<ServerInfo>(std::cout, "\n"));
     while (1) {
-        nfds = epoll_wait(Client::getEpollfd(), events.data(), events.size(), -1); // timeout set to 10s here
+        nfds = epoll_wait(Client::getEpollfd(), events.data(), events.size(), -1); // if not -1, timeout set to 10s here
         if (nfds == -1) {
+            if (errno == EINTR) { // epoll_wait interrupted by a signal (probably SIGCHLD, as SIGCHLD handler is installed)
+                errno = 0;
+                continue ;
+            }
             return perror("epoll_wait"), 1;
         }
         for (int i = 0; i < nfds; ++i) {
 //            std::cout << "events[" << i << "].data.fd = " << events[i].data.fd << ", max_connfd: " << max_connfd << '\n';
             if (events[i].data.fd > max_connfd) { // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
                 c_it = std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i].data.fd));
-                assert(c_it != clients.end());
+                //assert(c_it != clients.end());
+                if (c_it == clients.end()) { // if reached here, probably is stored in one of clients' passive_fd
+//                    std::cout << "event fd: " << events[i].data.fd << '\n';
+//                    std::copy(clients.begin(), clients.end(), std::ostream_iterator<Client>(std::cout, "\n"));
+//                    exit(1);
+                    continue ;
+                }
                 if (events[i].events & EPOLLIN) {
                     c_it->socketRecv();
+                }
+                if (*c_it != events[i].data.fd) { // in the middle of socketRecv(), the active_fd can change
+                    continue ;
                 }
                 if (events[i].events & EPOLLOUT) {
                     c_it->socketSend();
                 }
                 temp.splice(temp.begin(), clients, c_it);
             } else {
-                //addrlen = 0;
+                addrlen = 0;
                 memset(&addr, 0, sizeof(addr));
                 // possible race condition, where client connection attempt may have dropped between epoll_wait() and accept()
                 // if events[i].data.fd is blocking, accept call can potentially block
                 // may need to use fcntl() to set fd to non-blocking
-                sockfd = accept(events[i].data.fd, &addr, &(addrlen = 0));
+                sockfd = accept(events[i].data.fd, &addr, &addrlen);
                 //std::cout << "accept() called\n";
                 if (sockfd == -1) {
                     handle_error("accept");
                 }
+                std::cout << "event fd used in accept(): " << events[i].data.fd << '\n';
+                std::cout << "port nbr: " << ntohs(((struct sockaddr_in *)&addr)->sin_port) << '\n';
+                std::cout << "ip addr: " << ntohl( ((struct sockaddr_in *)&addr)->sin_addr.s_addr) << '\n';
                 // not sure if this two setsockopt()s are needed when MSG_DONTWAIT is set for recv/send
 //                if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
 //                    handle_error("setsockopt recv");
@@ -190,7 +211,12 @@ int main(int argc, char *argv[], char *envp[]) {
         }
         // can also put timeout condition in isConnClosed() func so can remove all dead or inactive connections in 1 call
         c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isConnClosed));
-        clients.erase(c_it, clients.end());
+        if (c_it != clients.end()) {
+            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
+            std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
+            clients.erase(c_it, clients.end());
+            std::cout << "size of clients after: " << clients.size() << std::endl;
+        }
         clients.splice(clients.end(), temp, temp.begin(), temp.end());
         std::fill(events.begin(), events.end(), (struct epoll_event){});
         // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
@@ -207,5 +233,6 @@ int main(int argc, char *argv[], char *envp[]) {
     for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
         std::for_each(it->connfds.begin(), it->connfds.end(), &close);
     }
+    std::for_each(clients.begin(), clients.end(), std::mem_fun_ref(&Client::closeFds));
     close(Client::getEpollfd());
 }

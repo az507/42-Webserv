@@ -11,7 +11,7 @@
 
 # define BUFSIZE 1024
 # define handle_error(err) \
-    do { perror(err); exit(EXIT_FAILURE); } while (0);
+    do { std::cout << err << ": " << strerror(errno) << '\n'; exit(EXIT_FAILURE); } while (0);
 
 namespace std {
     template<typename T, typename U>
@@ -31,12 +31,16 @@ class Client {
         void socketRecv(); // could either be from client or cgi
         void socketSend();
 
+        void closeFds();
         void setActiveFd(int);
         bool isConnClosed() const;
+        bool operator!=(int) const;
         bool operator==(int) const;
         static int getEpollfd();
         static void setEpollfd(int);
         static void setEnvp(const char **);
+
+        friend std::ostream& operator<<(std::ostream&, Client const&);
 
     private:
         static std::map<int, std::string> initHttpStatuses();

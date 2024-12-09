@@ -50,7 +50,7 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
             }
         }
     }
-    printServerInfo();
+    //printServerInfo();
 }
 
 std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
