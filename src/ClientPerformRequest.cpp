@@ -16,7 +16,7 @@ int Client::performRequest() {
         }
         setIOState(SEND_HTTP);
         if (p_state != ERROR) {
-            setPState(START_LINE);
+            setPState(START_LINE); // reset state keep alive
         }
     } else {
         runCgiScript(reqInfo);

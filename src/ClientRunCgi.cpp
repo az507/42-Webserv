@@ -2,7 +2,7 @@
 
 void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
     int pipefds[2];
-    //int stdin_fd, stdout_fd;
+    int stdin_fd, stdout_fd;
 
 //    stdin_fd = dup(STDIN_FILENO);
 //    if (stdin_fd == -1) {

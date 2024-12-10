@@ -66,7 +66,7 @@ int Client::parseStartLine() {
     }
     for (int i = 0; i < 3; ++i) {
         if (http_str == methods[i]) {
-            http_method = 1 << i;
+            http_method = 1 << i;  // 1, 2, 4 for GET, POST, DELETE
             break ;
         }
     }
