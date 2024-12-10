@@ -171,10 +171,7 @@ int main(int argc, char *argv[], char *envp[]) {
                 if (events[i].events & EPOLLIN) {
                     c_it->socketRecv();
                 }
-                if (*c_it != events[i].data.fd) { // in the middle of socketRecv(), the active_fd can change
-                    continue ;
-                }
-                if (events[i].events & EPOLLOUT) {
+                if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the active_fd can change
                     c_it->socketSend();
                 }
                 temp.splice(temp.begin(), clients, c_it);
