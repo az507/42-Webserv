@@ -29,8 +29,8 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
 
 // reqInfo.first = query_str, .second = path_info
 void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& reqInfo) {
-    std::vector<char *> argv(3, NULL);
     std::vector<char *> envp;
+    std::vector<char *> argv(3, NULL);
 
     if (dup2(pipefd, STDOUT_FILENO) == -1 || dup2(pipefd, STDIN_FILENO) == -1) {
         handle_error("dup2");
@@ -46,6 +46,14 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
     }
     envp.push_back(strdup(std::string("QUERY_STRING=").append(reqInfo.first).c_str()));
     envp.push_back(NULL);
+    std::cerr << "before) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
+    if (argv[0][0]) {
+        char *ptr = strrchr(argv[0], '/');
+        if (ptr && !ptr[1]) {
+            *ptr = '\0';
+        }
+    }
+    std::cerr << "after) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
     if (execve(argv[0], argv.data(), envp.data()) == -1) {
         perror(argv[0]);
     }

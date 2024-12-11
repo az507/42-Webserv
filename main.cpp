@@ -174,6 +174,9 @@ int main(int argc, char *argv[], char *envp[]) {
                 if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the active_fd can change
                     c_it->socketSend();
                 }
+                if (c_it->isConnClosed()) {
+                    continue ;
+                }
                 temp.splice(temp.begin(), clients, c_it);
             } else {
                 addrlen = 0;
