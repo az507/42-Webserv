@@ -3,7 +3,8 @@
 void Client::parseCgiOutput(const char *buf, size_t bytes) {
     int res;
 
-    assert(io_state != ERROR);
+    assert(p_state != ERROR);
+    assert(io_state == RECV_CGI);
     if (p_state == MSG_BODY && unchunk_flag) {
         recvbuf.append(buf, bytes);
     } else {
@@ -12,9 +13,9 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
         }
         msg_body.append(buf, bytes);
     }
-    //std::cout << buf << '\n';
+    std::cout << buf << '\n';
     do {
-        switch (io_state) {
+        switch (p_state) {
             case START_LINE:    res = ignoreStartLine(); continue ;
             case HEADERS:       res = parseCgiHeaders(bytes); continue ;
             case MSG_BODY:      res = parseMsgBody(bytes); continue ; // assumes CGI output always have msg body
@@ -23,6 +24,7 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
                                 std::swap(active_fd = -1, passive_fd);
                                 send_it = msg_body.begin();
                                 send_ite = msg_body.end();
+                                std::cout << "msg_body.length(): " << msg_body.length() << std::endl;
             case ERROR:         break ;
             default:            std::terminate();
         }
@@ -60,11 +62,12 @@ int Client::parseCgiHeaders(size_t& bytes) {
         } else {
             pos1 = buf.find(':');
             if (pos1 != std::string::npos) {
-                headers[recvbuf.substr(0, pos1)] = recvbuf.substr(pos1 + 1);
+                //headers[recvbuf.substr(0, pos1)] = recvbuf.substr(pos1 + 1);
+                headers[msg_body.substr(0, pos1)] = msg_body.substr(pos1 + 1);
             }
         }
     }
-    assert(recvbuf.empty());
+    //assert(recvbuf.empty());
     assert(!track_length && !unchunk_flag);
     if (!configureIOMethod(headers)) {
         return -1;

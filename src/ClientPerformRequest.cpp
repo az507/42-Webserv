@@ -15,11 +15,11 @@ int Client::performRequest() {
             default:                    std::terminate();
         }
         setIOState(SEND_HTTP);
-        if (p_state != ERROR) {
-            setPState(START_LINE); // reset state keep alive
-        }
     } else {
         runCgiScript(reqInfo);
+    }
+    if (p_state != ERROR) {
+        setPState(START_LINE); // reset state keep alive
     }
     return res;
 }
@@ -85,9 +85,14 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
     if (route && !route->cgi_extension.empty()
         && (pos = request_uri.find(route->cgi_extension)) != std::string::npos) { // is cgi or not
 
-        reqInfo.second = request_uri.substr(pos + route->cgi_extension.length()); // get QUERY_STRING
+        pos += route->cgi_extension.length();
+        if (pos < request_uri.length()) {
+            reqInfo.second = request_uri.substr(pos + 1); // get QUERY_STRING
+        }
         if (reqInfo.second.empty()) {
             reqInfo.second = "/";
+        } else {
+            request_uri.erase(pos);
         }
         //request_uri[pos] = '\0';
     }

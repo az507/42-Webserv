@@ -25,7 +25,7 @@ int main(int argc, char *argv[], char *envp[]) {
     std::vector<ServerInfo> servers;
 
     signal(SIGPIPE, SIG_IGN);
-    signal(SIGCHLD, &sigchldHandler);
+    //signal(SIGCHLD, &sigchldHandler);
     Client::setEnvp(const_cast<const char **>(envp));
 
     if (argc == 1) {
@@ -186,9 +186,9 @@ int main(int argc, char *argv[], char *envp[]) {
                 if (sockfd == -1) {
                     handle_error("accept");
                 }
-                std::cout << "event fd used in accept(): " << events[i].data.fd << '\n';
-                std::cout << "port nbr: " << ntohs(((struct sockaddr_in *)&addr)->sin_port) << '\n';
-                std::cout << "ip addr: " << ntohl( ((struct sockaddr_in *)&addr)->sin_addr.s_addr) << '\n';
+//                std::cout << "event fd used in accept(): " << events[i].data.fd << '\n';
+//                std::cout << "port nbr: " << ntohs(((struct sockaddr_in *)&addr)->sin_port) << '\n';
+//                std::cout << "ip addr: " << ntohl( ((struct sockaddr_in *)&addr)->sin_addr.s_addr) << '\n';
                 // not sure if this two setsockopt()s are needed when MSG_DONTWAIT is set for recv/send
 //                if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
 //                    handle_error("setsockopt recv");

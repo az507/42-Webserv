@@ -86,8 +86,10 @@ void Client::socketRecv() {
                         if (io_state == RECV_HTTP) { // client closed connection ?
                             //std::terminate();
                             closeConnection();
-                            std::cout << "exiting..." << std::endl;
-                            exit(1);
+                            std::cout << "waiting..." << std::endl;
+                            /*pid_t pid = */wait(NULL);
+//                            std::cout << "pid = " << pid << ", exiting..." << std::endl;
+//                            exit(1);
                         } else {
                             //throw std::vector<int>(5);
                             send_it = msg_body.begin();
@@ -118,6 +120,7 @@ void Client::socketSend() {
     dist = std::distance(send_it, send_ite);
     //assert(dist > 0);
     bytes = send(active_fd, &*send_it, dist, MSG_DONTWAIT);
+    std::cout << "bytes sent: " << bytes << ", dist: " << dist << std::endl;
     switch (bytes) {
         // send returns -1 when broken pipe for cgi, SIGPIPE gets sent, for now assume that connection is broken
         case -1:

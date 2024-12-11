@@ -3,8 +3,7 @@
 void Client::parseHttpRequest(const char *buf, size_t bytes) {
     int res;
 
-    assert(io_state != ERROR);
-    //if (io_state == MSG_BODY && !unchunk_flag) {
+    assert(p_state != ERROR);
     if (p_state == MSG_BODY && !unchunk_flag) {
         if (track_length) {
             bytes = std::min(bytes_left, bytes);
@@ -24,7 +23,6 @@ void Client::parseHttpRequest(const char *buf, size_t bytes) {
         }
     }
     while (res);
-    //std::cout << "request_uri: " << request_uri << '\n';
 }
 
 RouteInfo const* Client::findRouteInfo() const {
