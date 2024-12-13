@@ -27,6 +27,28 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
     }
 }
 
+std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const& reqInfo) const {
+    std::vector<char *> envp;
+
+    // need to provide more env vars to cgi script based on rfc spec
+    for (int i = 0; Client::envp[i] != NULL; ++i) {
+        envp.push_back(strdup(Client::envp[i]));
+    }
+    envp.push_back(strdup(std::string("PATH_INFO=").append(reqInfo.first).c_str()));
+    envp.push_back(strdup(std::string("QUERY_STRING=").append(reqInfo.second).c_str()));
+    if (route) {
+        envp.push_back(strdup(std::string("UPLOAD_STORE=").append(route->upload_dir).c_str()));
+    }
+    switch (http_method) {
+        case GET_METHOD:        envp.push_back(strdup(std::string("REQUEST_METHOD=").append("GET").c_str())); break ;
+        case POST_METHOD:       envp.push_back(strdup(std::string("REQUEST_METHOD=").append("POST").c_str())); break ;
+        case DELETE_METHOD:     envp.push_back(strdup(std::string("REQUEST_METHOD=").append("DELETE").c_str())); break ;
+        default:                std::terminate();
+    }
+    envp.push_back(NULL);
+    return envp;
+}
+
 // reqInfo.first = query_str, .second = path_info
 void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& reqInfo) {
     std::vector<char *> envp;
@@ -40,12 +62,7 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
     }
     argv[0] = strdup(request_uri.c_str());
     argv[1] = strdup(reqInfo.second.c_str());
-    // need to provide more env vars to cgi script based on rfc spec
-    for (int i = 0; Client::envp[i] != NULL; ++i) {
-        envp.push_back(strdup(Client::envp[i]));
-    }
-    envp.push_back(strdup(std::string("QUERY_STRING=").append(reqInfo.first).c_str()));
-    envp.push_back(NULL);
+    envp = initCgiEnv(reqInfo);
     std::cerr << "before) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
     if (argv[0][0]) {
         char *ptr = strrchr(argv[0], '/');

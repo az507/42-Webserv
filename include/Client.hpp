@@ -105,6 +105,7 @@ class Client {
         int parseCgiHeaders(size_t&);
 
         void runCgiScript(std::pair<std::string, std::string> const&);
+        std::vector<char *> initCgiEnv(std::pair<std::string, std::string> const&) const;
         void executeCgi(int, std::pair<std::string, std::string> const&);
         void registerEvent(int, uint32_t);
 

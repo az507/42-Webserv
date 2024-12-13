@@ -40,7 +40,7 @@ void Client::writeInitialPortion() {
     static const std::string conn = "Connection";
 
     oss << "HTTP/1.1 " << http_code << ' ' << getHttpStatus(http_code) << "\r\n";
-    oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
+    //oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
     oss << "Content-Length: " << getContentLength(request_uri) << "\r\n";
     oss << conn << ": ";
     if (headers.count(conn)) {

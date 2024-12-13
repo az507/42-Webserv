@@ -45,6 +45,7 @@ std::map<std::string, std::string> Client::initContentTypes() {
     contentTypes["css"] = "text/css";
     contentTypes["svg"] = "image/svg-xml";
     contentTypes["ico"] = "image/x-icon";
+    contentTypes["png"] = "image/png";
     return contentTypes;
 }
 
