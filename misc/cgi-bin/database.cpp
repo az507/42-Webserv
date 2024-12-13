@@ -60,9 +60,7 @@ void getRequestedFile(const char *filename) {
 int main(int argc, char *argv[]) {
     char *http_method;
 
-    if (argc < 2) {
-        return 1;
-    }
+    assert(argc >= 2);
     http_method = std::getenv("HTTP_METHOD");
     assert(http_method != NULL);
     if (!strcmp(http_method, "GET")) {

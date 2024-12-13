@@ -100,7 +100,7 @@ void Client::socketRecv() {
                         }
                         break ;
         default:        buf[bytes] = '\0';
-                        //std::cout << buf << '\n';
+                        std::cout << buf << '\n';
                         switch (io_state) {
                             case RECV_HTTP:     parseHttpRequest(buf, bytes); break ;
                             case RECV_CGI:      parseCgiOutput(buf, bytes); break ; // both parse funcs may change IOState

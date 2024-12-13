@@ -10,7 +10,7 @@
 # include <unistd.h>
 # include <stdint.h>
 
-# define BUFSIZE 10
+# define BUFSIZE 1024
 # define handle_error(err) \
     do { std::cout << err << ": " << strerror(errno) << '\n'; exit(EXIT_FAILURE); } while (0);
 
