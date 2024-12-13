@@ -29,7 +29,7 @@ int main(int argc, char *argv[], char *envp[]) {
     Client::setEnvp(const_cast<const char **>(envp));
 
     if (argc == 1) {
-        argv[1] = const_cast<char *>("misc/default.conf");
+        argv[1] = const_cast<char *>("misc/conf/default.conf");
     }
     try {
         servers = ConfigFile(argv[1]).getServerInfo();
@@ -107,10 +107,11 @@ int main(int argc, char *argv[], char *envp[]) {
     for (std::vector<ServerInfo>::iterator it = servers.begin(); it != servers.end(); ++it) {
         for (std::vector<RouteInfo>::iterator tmp = it->routes.begin(); tmp != it->routes.end(); ++tmp) {
             if (!tmp->root.empty() && tmp->root.find('/') == std::string::npos && pwd) {
-                tmp->root.insert(tmp->root.begin(), '/');
-                tmp->root.insert(0, pwd);
+//                tmp->root.insert(tmp->root.begin(), '/');
+//                tmp->root.insert(0, pwd);
                 //std::cout << "tmp->root: " << tmp->root << '\n';
             }
+            std::cout << "tmp->root: " << tmp->root << '\n';
         }
     }
 

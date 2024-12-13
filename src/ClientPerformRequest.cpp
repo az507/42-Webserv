@@ -5,8 +5,10 @@ int Client::performRequest() {
     int res = 0;
     std::pair<std::string, std::string> reqInfo;
 
+    std::cout << "1) request_uri: " << request_uri << std::endl;
     reqInfo = filterRequestUri();
     writeInitialPortion();
+    std::cout << "2) request_uri: " << request_uri << '\n' << std::endl;
     if (reqInfo.second.empty()) { // no cgi-extension found
         switch (http_method) {
             case GET_METHOD:            res = performGetMethod(); break ;
