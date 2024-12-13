@@ -214,7 +214,7 @@ void Client::deleteEvent(int fd) {
 void Client::setErrorState(int num) {
     std::map<int, std::string>::const_iterator it;
 
-    throw std::runtime_error("ErrorState");
+    //throw std::runtime_error("ErrorState");
     http_code = num;
     setPState(ERROR);
     setIOState(SEND_HTTP);
@@ -226,6 +226,8 @@ void Client::setErrorState(int num) {
     }
     send_it = filebuf.begin();
     send_ite = filebuf.end();
+    std::cout << "filebuf: " << std::endl;
+    std::cout << filebuf << std::endl;
 }
 
 ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& servers) const {

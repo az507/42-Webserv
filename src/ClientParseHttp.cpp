@@ -18,7 +18,7 @@ void Client::parseHttpRequest(const char *buf, size_t bytes) {
             case HEADERS:           res = parseHeaders(bytes); continue ;
             case MSG_BODY:          res = parseMsgBody(bytes); continue ; // DONT ENTER IF NON-POST REQUEST
             case FINISHED:          res = performRequest(); continue ;
-            case ERROR:             break ;
+            case ERROR:             setPState(START_LINE); return ;
             default:                std::terminate(); // should not reach here
         }
     }
