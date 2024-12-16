@@ -114,6 +114,18 @@ int Client::performGetMethod() {
 }
 
 // Potential wastage here, as data is transferred from recvbuf to msgbody to outfile
+// int Client::performPostMethod() {
+//     std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary);
+
+//     if (!outfile.is_open()) {
+//         perror(request_uri.c_str());
+//         setErrorState(4);
+//         return -1;
+//     }
+//     std::copy(msg_body.begin(), msg_body.end(), std::ostreambuf_iterator<char>(outfile));
+//     return 0;
+// }
+
 int Client::performPostMethod() {
     std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary);
 
@@ -122,7 +134,22 @@ int Client::performPostMethod() {
         setErrorState(4);
         return -1;
     }
-    std::copy(msg_body.begin(), msg_body.end(), std::ostreambuf_iterator<char>(outfile));
+    
+    try {
+        if (!msg_body.empty()) {
+            outfile.write(&msg_body[0], msg_body.size());
+        }
+        if (!outfile) {
+            std::cerr << "Error writing to file: " << request_uri << '\n';
+            setErrorState(5);
+            return -1;
+        }
+    } catch (std::exception const& e) {
+        std::cerr << "Error writing to file: " << e.what() << '\n';
+        setErrorState(6);
+        return -1;
+    }
+    outfile.close();
     return 0;
 }
 

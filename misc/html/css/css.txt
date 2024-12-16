@@ -1,0 +1,182 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    css.txt                                            :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: xzhang <marvin@42.fr>                      +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2024/12/16 12:23:26 by xzhang            #+#    #+#              #
+#    Updated: 2024/12/16 12:23:30 by xzhang           ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+CSS stands for Cascading Style Sheets. It is a style sheet language used to describe the presentation of a document written in HTML (or XML). While HTML is used to define the structure and content of a webpage, CSS is used to control the layout, appearance, and design of that content.
+
+
+Core Concepts of CSS
+
+    Selectors
+    Selectors are used to target the HTML elements you want to style.
+        Example:
+
+<p>Hello, world!</p>
+
+    p {
+      color: blue;
+      font-size: 16px;
+    }
+
+        The p in the CSS targets the <p> (paragraph) element.
+
+Properties and Values
+CSS styles are applied by setting properties and assigning them values.
+
+    Example:
+
+        color: blue; /* Property: color, Value: blue */
+        font-size: 16px; /* Property: font-size, Value: 16px */
+
+    Cascading
+    The "Cascading" in CSS means that styles can come from multiple sources (e.g., inline styles, internal stylesheets, or external stylesheets). CSS uses a priority system to determine which styles to apply:
+        Inline styles (highest priority)
+        Internal stylesheet (in a <style> block)
+        External stylesheet (linked via <link> in the <head>)
+
+    Box Model
+    CSS treats every element as a rectangular box, and the box model controls how elements are spaced and aligned.
+        The box model consists of:
+            Content: The actual content of the element.
+            Padding: Space between the content and the border.
+            Border: The edge surrounding the padding.
+            Margin: The space outside the border, separating the element from others.
+
+How to Use CSS
+1. Inline CSS
+
+You apply CSS directly to an HTML element using the style attribute.
+
+    Example:
+
+    <h1 style="color: red; font-size: 24px;">Hello!</h1>
+
+2. Internal CSS
+
+You include CSS within a <style> tag in the <head> section of the HTML document.
+
+    Example:
+
+    <style>
+      body {
+        background-color: lightgray;
+      }
+    </style>
+
+3. External CSS
+
+You link an external .css file using a <link> tag in the HTML document.
+
+    Example:
+
+<link rel="stylesheet" href="styles.css">
+
+And in styles.css:
+
+    body {
+      background-color: lightgray;
+    }
+
+Common CSS Properties
+
+    Text and Font
+        color: Sets the text color.
+        font-size: Sets the size of the font.
+        font-family: Specifies the font.
+        text-align: Aligns text (e.g., left, right, center).
+
+    Example:
+
+h1 {
+  color: blue;
+  font-size: 24px;
+  text-align: center;
+}
+
+Box Model
+
+    width / height: Sets the dimensions of an element.
+    margin: Controls the space outside the element.
+    padding: Controls the space inside the element.
+    border: Adds a border around the element.
+
+Example:
+
+div {
+  width: 200px;
+  height: 100px;
+  margin: 20px auto;
+  padding: 10px;
+  border: 2px solid black;
+}
+
+Background and Colors
+
+    background-color: Sets the background color of an element.
+    background-image: Sets a background image.
+    opacity: Sets the transparency of an element.
+
+Example:
+
+body {
+  background-color: lightblue;
+}
+
+Positioning
+
+    position: Controls how an element is positioned (e.g., static, relative, absolute, fixed).
+    z-index: Controls the stacking order of elements.
+
+Example:
+
+    div {
+      position: absolute;
+      top: 50px;
+      left: 100px;
+    }
+
+CSS in Action
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Example</title>
+  <style>
+    body {
+      background-color: lightgray;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      color: blue;
+      text-align: center;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome to CSS!</h1>
+  <p>This is an example of using CSS to style a webpage.</p>
+</body>
+</html>
+
+Why Learn CSS?
+
+    Styling: CSS allows you to control the look and feel of your webpage.
+    Responsive Design: CSS enables you to create designs that work on different screen sizes.
+    Animations: CSS can create animations and transitions for interactive designs.
+    Professional Websites: A well-styled website creates a better user experience.
+
+Let me know if you'd like to dive deeper into CSS topics like Flexbox, Grid, or responsive design! 😊

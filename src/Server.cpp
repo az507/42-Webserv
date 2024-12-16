@@ -371,7 +371,7 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
 }
 bool Server::isdirectory(const std::string &path)
 {
-    struct stat statbuf;
+    struct stat statbuf;// struct stat: file status structure
 
     if (stat(path.c_str(), &statbuf) != 0) // stat: get file status
         return (false);
