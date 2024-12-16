@@ -37,6 +37,11 @@ void Client::setActiveFd(int fd) {
     active_fd = fd;
 }
 
+std::pair<int, int> Client::getAllFds() const {
+    
+    return std::make_pair(active_fd, passive_fd);
+}
+
 // private
 std::map<std::string, std::string> Client::initContentTypes() {
     std::map<std::string, std::string> contentTypes;

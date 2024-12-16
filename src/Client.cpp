@@ -79,19 +79,19 @@ void Client::socketRecv() {
     if (io_state != RECV_HTTP && io_state != RECV_CGI) {
         return ;
     }
+    //assert(io_state != RECV_CGI);
     bytes = recv(active_fd, buf, BUFSIZE, MSG_DONTWAIT);
     switch (bytes) {
         case -1:        handle_error("recv");
-        case 0:
-                        if (io_state == RECV_HTTP) { // client closed connection ?
+        case 0:         if (io_state == RECV_HTTP) { // client closed connection ?
                             //std::terminate();
                             closeConnection();
-                            std::cout << "waiting..." << std::endl;
-                            /*pid_t pid = */wait(NULL);
+                            //std::cout << "waiting..." << std::endl;
+                            /*pid_t pid = *///wait(NULL);
 //                            std::cout << "pid = " << pid << ", exiting..." << std::endl;
 //                            exit(1);
                         } else {
-                            //throw std::vector<int>(5);
+                            std::cerr << "MSG_BODY LENGTH = " << msg_body.length() << '\n';
                             send_it = msg_body.begin();
                             send_ite = msg_body.end();
                             close(active_fd);
@@ -101,6 +101,9 @@ void Client::socketRecv() {
                         break ;
         default:        buf[bytes] = '\0';
                         std::cout << buf << '\n';
+//                        if (io_state == RECV_CGI) {
+//                            throw std::exception();
+//                        }
                         switch (io_state) {
                             case RECV_HTTP:     parseHttpRequest(buf, bytes); break ;
                             case RECV_CGI:      parseCgiOutput(buf, bytes); break ; // both parse funcs may change IOState
@@ -120,6 +123,11 @@ void Client::socketSend() {
     dist = std::distance(send_it, send_ite);
     //assert(dist > 0);
     bytes = send(active_fd, &*send_it, dist, MSG_DONTWAIT);
+    if (io_state == SEND_HTTP) {
+        std::cout << "sending to client" << std::endl;
+    } else if (io_state == SEND_CGI) {
+        std::cout << "sending to CGI" << std::endl;
+    }
     std::cout << "bytes sent: " << bytes << ", dist: " << dist << std::endl;
     switch (bytes) {
         // send returns -1 when broken pipe for cgi, SIGPIPE gets sent, for now assume that connection is broken
@@ -138,6 +146,11 @@ void Client::socketSend() {
 void Client::advanceSendIterators(size_t bytes) {
 
     std::advance(send_it, bytes);
+    if (io_state == SEND_CGI) {
+        std::cout << "SENT TO CGI, bytes = " << bytes << std::endl;
+        std::cout << "after sending to CGI: active_fd: " << active_fd << ", passive_fd: " << passive_fd << std::endl;
+        //throw std::string("abc");
+    }
     if (send_it == send_ite) {
         switch (io_state) {
             case SEND_CGI:

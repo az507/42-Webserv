@@ -19,6 +19,10 @@ namespace std {
     std::ostream& operator<<(std::ostream& os, std::pair<const T, U> const& obj) {
         return os << "first: " << obj.first << "\nsecond: "  << obj.second;
     }
+    template<typename T>
+    std::ostream& operator<<(std::ostream& os, std::pair<T, T> const& obj) {
+        return os << obj.first << ", " << obj.second;
+    }
 }
 
 class Client {
@@ -37,6 +41,7 @@ class Client {
         bool isConnClosed() const;
         bool operator!=(int) const;
         bool operator==(int) const;
+        std::pair<int, int> getAllFds() const;
         static int getEpollfd();
         static void setEpollfd(int);
         static void setEnvp(const char **);

@@ -1,19 +1,15 @@
------------------------------4148538522453418803633254034
-Content-Disposition: form-data; name="fname"
-
-x
------------------------------4148538522453418803633254034
-Content-Disposition: form-data; name="uploaded_file"; filename="database.py"
-Content-Type: text/x-python
-
 #!/usr/bin/env python3
 import cgi
 import os
+import cgitb
 
+cgitb.enable()
 print("Content-Type: text/html\n")
 
 form = cgi.FieldStorage()
 fileitem = form['uploaded_file']
+
+os.write(2, b"abc123\n")
 
 if fileitem.filename:
     # Save file to server
@@ -24,4 +20,4 @@ if fileitem.filename:
 else:
     print("No file uploaded.")
 
------------------------------4148538522453418803633254034--
+os.write(2, b"python script writing to stderr\n")

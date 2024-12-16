@@ -18,6 +18,7 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
                         registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
     }
     std::swap(active_fd, passive_fd = pipefds[0]);
+    std::cout << "after forking, active_fd: " << active_fd << ", passive_fd: " << passive_fd << std::endl;
     if (http_method == POST_METHOD) {
         send_it = msg_body.begin();
         send_ite = msg_body.end();
@@ -34,15 +35,16 @@ std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const
     for (int i = 0; Client::envp[i] != NULL; ++i) {
         envp.push_back(strdup(Client::envp[i]));
     }
+    envp.push_back(strdup("UPLOAD_DIR=temp"));
     envp.push_back(strdup(std::string("PATH_INFO=").append(reqInfo.first).c_str()));
     envp.push_back(strdup(std::string("QUERY_STRING=").append(reqInfo.second).c_str()));
     if (route) {
         envp.push_back(strdup(std::string("UPLOAD_STORE=").append(route->upload_dir).c_str()));
     }
     switch (http_method) {
-        case GET_METHOD:        envp.push_back(strdup(std::string("REQUEST_METHOD=").append("GET").c_str())); break ;
-        case POST_METHOD:       envp.push_back(strdup(std::string("REQUEST_METHOD=").append("POST").c_str())); break ;
-        case DELETE_METHOD:     envp.push_back(strdup(std::string("REQUEST_METHOD=").append("DELETE").c_str())); break ;
+        case GET_METHOD:        envp.push_back(strdup("REQUEST_METHOD=GET")); break ;
+        case POST_METHOD:       envp.push_back(strdup("REQUEST_METHOD=POST")); break ;
+        case DELETE_METHOD:     envp.push_back(strdup("REQUEST_METHOD=DELETE")); break ;
         default:                std::terminate();
     }
     envp.push_back(NULL);
@@ -83,9 +85,10 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
 void Client::registerEvent(int fd, uint32_t events) {
     struct epoll_event ev;
 
+    (void)events;
     memset(&ev, 0, sizeof(ev));
     ev.data.fd = fd;
-    ev.events = events;
+    ev.events = EPOLLIN | EPOLLOUT;
     if (epoll_ctl(Client::epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         handle_error("RE: epoll_ctl");
     }

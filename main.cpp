@@ -169,16 +169,16 @@ int main(int argc, char *argv[], char *envp[]) {
 //                    exit(1);
                     continue ;
                 }
+                //std::cout << "in main, client's fds = " << c_it->getAllFds() << std::endl;
                 if (events[i].events & EPOLLIN) {
                     c_it->socketRecv();
                 }
                 if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the active_fd can change
                     c_it->socketSend();
                 }
-                if (c_it->isConnClosed()) {
-                    continue ;
+                if (!c_it->isConnClosed()) {
+                    temp.splice(temp.begin(), clients, c_it);
                 }
-                temp.splice(temp.begin(), clients, c_it);
             } else {
                 addrlen = 0;
                 memset(&addr, 0, sizeof(addr));
@@ -201,6 +201,7 @@ int main(int argc, char *argv[], char *envp[]) {
 //                    handle_error("setsockopt send");
 //                }
 //                if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER
+                memset(&ev, 0, sizeof(ev));
                 ev.data.fd = sockfd;
                 ev.events = EPOLLIN | EPOLLOUT;
                 if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, sockfd, &ev) == -1) {

@@ -68,7 +68,8 @@ int Client::parseCgiHeaders(size_t& bytes) {
         }
     }
     //assert(recvbuf.empty());
-    assert(!track_length && !unchunk_flag);
+    track_length = unchunk_flag = false;
+    //assert(!track_length && !unchunk_flag);
     if (!configureIOMethod(headers)) {
         return -1;
     }
