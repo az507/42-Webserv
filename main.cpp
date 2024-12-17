@@ -16,6 +16,63 @@ void sigchldHandler(int sig) {
     }
 }
 
+
+// static void handleCgiScript(const std::string &scriptPath, int clientFd) {
+//     int cgiOutput[2];
+//     pid_t pid;
+
+//     // Create a pipe for CGI output
+//     if (pipe(cgiOutput) == -1) {
+//         perror("pipe");
+//         return;
+//     }
+
+//     // Set pipes to non-blocking
+//     fcntl(cgiOutput[0], F_SETFL, O_NONBLOCK);
+//     fcntl(cgiOutput[1], F_SETFL, O_NONBLOCK);
+
+//     if ((pid = fork()) == -1) {
+//         perror("fork");
+//         close(cgiOutput[0]);
+//         close(cgiOutput[1]);
+//         return;
+//     }
+
+//     if (pid == 0) { // Child process
+//         dup2(cgiOutput[1], STDOUT_FILENO); // Redirect stdout to pipe
+//         close(cgiOutput[0]);              // Close unused read end
+//         close(cgiOutput[1]);
+
+//         // Replace current process with CGI script
+//         char *args[] = {const_cast<char *>(scriptPath.c_str()), NULL};
+//         char *env[] = {NULL};
+//         execve(scriptPath.c_str(), args, env);
+
+//         perror("execve"); // If execve fails
+//         exit(1);
+//     } else { // Parent process
+//         close(cgiOutput[1]); // Close unused write end
+
+//         // Read CGI output in non-blocking mode
+//         char buffer[1024];
+//         ssize_t bytesRead;
+//         while ((bytesRead = read(cgiOutput[0], buffer, sizeof(buffer) - 1)) > 0) {
+//             buffer[bytesRead] = '\0';
+//             send(clientFd, buffer, bytesRead, 0); // Send CGI output to client
+//         }
+
+//         close(cgiOutput[0]); // Close read end
+
+//         // Wait for child process to terminate
+//         int status;
+//         waitpid(pid, &status, WNOHANG);
+//         if (WIFEXITED(status)) {
+//             std::cout << "CGI exited with status " << WEXITSTATUS(status) << std::endl;
+//         }
+//     }
+// }
+
+
 // for some reason, there are problems with displaying .svg files, may need extra info in the html doc
 int main(int argc, char *argv[], char *envp[]) {
     //std::vector<int> connfds;
@@ -169,6 +226,13 @@ int main(int argc, char *argv[], char *envp[]) {
 //                    exit(1);
                     continue ;
                 }
+                //-----------------------------------
+                // if (isCgiRequest(requestPath)) { // A condition to check if it's a CGI request
+                // handleCgiScript(requestPath, c_it->getActiveFd());
+                // } else {
+                // c_it->socketRecv();
+                // }
+                //------------------------------------
                 //std::cout << "in main, client's fds = " << c_it->getAllFds() << std::endl;
                 if (events[i].events & EPOLLIN) {
                     c_it->socketRecv();
