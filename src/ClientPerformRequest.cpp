@@ -103,19 +103,6 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
         }
     }
     return reqInfo;
-//
-//        pos += route->cgi_extension.length();
-//        if (pos < request_uri.length()) {
-//            reqInfo.second = request_uri.substr(pos + 1); // get QUERY_STRING
-//        }
-//        if (reqInfo.second.empty()) {
-//            reqInfo.second = "/";
-//        } else {
-//            request_uri.erase(pos);
-//        }
-//        //request_uri[pos] = '\0';
-//    }
-//    return reqInfo;
 }
 
 int Client::performGetMethod() {
