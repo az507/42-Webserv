@@ -36,11 +36,10 @@ std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const
     for (int i = 0; Client::envp[i] != NULL; ++i) {
         envp.push_back(strdup(Client::envp[i]));
     }
-    envp.push_back(strdup("UPLOAD_DIR=temp"));
     envp.push_back(strdup(std::string("PATH_INFO=").append(reqInfo.first).c_str()));
     envp.push_back(strdup(std::string("QUERY_STRING=").append(reqInfo.second).c_str()));
     if (route) {
-        envp.push_back(strdup(std::string("UPLOAD_STORE=").append(route->upload_dir).c_str()));
+        envp.push_back(strdup(std::string("UPLOAD_DIR=").append(route->upload_dir).c_str()));
     }
     switch (http_method) {
         case GET_METHOD:        envp.push_back(strdup("REQUEST_METHOD=GET")); break ;

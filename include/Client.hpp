@@ -11,6 +11,7 @@
 # include <stdint.h>
 
 # define BUFSIZE 1024
+# define TIMEOUT_VAL 2.0
 # define handle_error(err) \
     do { std::cout << err << ": " << strerror(errno) << '\n'; exit(EXIT_FAILURE); } while (0);
 
@@ -120,6 +121,8 @@ class Client {
         int http_method;
         int active_fd; // will be recv/send from this fd
         int passive_fd;
+
+        time_t client_conn_time;
 
         bool unchunk_flag;
         bool track_length;

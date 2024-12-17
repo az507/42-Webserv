@@ -10,6 +10,7 @@ Client::Client(int connfd, std::vector<ServerInfo> const& servers) :
         http_method(0),
         active_fd(-1),
         passive_fd(-1),
+        client_conn_time(time(NULL)),
         unchunk_flag(false),
         track_length(false),
         bytes_left(0),
@@ -82,7 +83,7 @@ void Client::socketRecv() {
     //assert(io_state != RECV_CGI);
     bytes = recv(active_fd, buf, BUFSIZE, MSG_DONTWAIT);
     switch (bytes) {
-        case -1:        handle_error("recv");
+        case -1:        //handle_error("recv");
         case 0:         if (io_state == RECV_HTTP) { // client closed connection ?
                             //std::terminate();
                             closeConnection();
@@ -107,7 +108,7 @@ void Client::socketRecv() {
 //                            throw std::exception();
 //                        }
                         switch (io_state) {
-                            case RECV_HTTP:     parseHttpRequest(buf, bytes); break ;
+                            case RECV_HTTP:     parseHttpRequest(buf, bytes); client_conn_time = time(NULL); break ;
                             case RECV_CGI:      parseCgiOutput(buf, bytes); break ; // both parse funcs may change IOState
                             default:            std::terminate();
                         }
@@ -155,6 +156,7 @@ void Client::advanceSendIterators(size_t bytes) {
         //throw std::string("abc");
     } else if (io_state == SEND_HTTP) {
         std::cout << "sending back to browser, bytes = " << bytes << std::endl;
+        /*****/client_conn_time = time(NULL);
     }
     if (send_it == send_ite) {
         switch (io_state) {
@@ -171,6 +173,11 @@ void Client::advanceSendIterators(size_t bytes) {
                                     if (ref == "close") {
                                         closeConnection();
                                     } else if (ref == "keep-alive") {
+//                                        if (request_uri.find(route->cgi_extension) != std::string::npos) {
+//                                            close(active_fd);
+//                                            std::cout << "exiting..." << std::endl;
+//                                            exit(1);
+//                                        }
                                         resetSelf();
                                         setIOState(RECV_HTTP);
                                     }

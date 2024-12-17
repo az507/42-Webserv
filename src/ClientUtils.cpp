@@ -18,6 +18,7 @@ void Client::setEnvp(const char **envp) {
 
 void Client::closeFds() {
 
+    //throw std::exception();
     if (active_fd > 0) {
         close(active_fd);
     }
@@ -28,8 +29,11 @@ void Client::closeFds() {
 }
 
 bool Client::isConnClosed() const {
-
-    return io_state == CONN_CLOSED;
+//    time_t diff;
+//
+//    diff = difftime(time(NULL), client_conn_time);
+//    std::cout << "diff in time: " << diff << std::endl;
+    return io_state == CONN_CLOSED || difftime(time(NULL), client_conn_time) > TIMEOUT_VAL;
 }
 
 void Client::setActiveFd(int fd) {

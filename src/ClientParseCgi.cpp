@@ -25,6 +25,8 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
                                 send_it = msg_body.begin();
                                 send_ite = msg_body.end();
                                 std::cout << "msg_body.length(): " << msg_body.length() << std::endl;
+                                return ;
+                                //throw "abc123";
             case ERROR:         break ;
             default:            std::terminate();
         }
@@ -51,7 +53,7 @@ int Client::parseCgiHeaders(size_t& bytes) {
     std::map<std::string, std::string> headers;
     static const std::string delim = "\r\n\r\n";
 
-    pos = msg_body.find(delim);
+    pos = msg_body.find("\r\n\r\n");
     if (pos == std::string::npos) {
         return 0;
     }
@@ -67,6 +69,8 @@ int Client::parseCgiHeaders(size_t& bytes) {
             }
         }
     }
+//    setPState(FINISHED);
+//    return 1;
     //assert(recvbuf.empty());
     track_length = unchunk_flag = false;
     //assert(!track_length && !unchunk_flag);

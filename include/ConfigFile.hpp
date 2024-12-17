@@ -28,7 +28,7 @@ struct RouteInfo {
     std::string redirect;
     std::string upload_dir;
     std::string prefix_str;
-    std::string cgi_extension;
+    std::vector<std::string> cgi_extensions;
 };
 
 struct ServerInfo {

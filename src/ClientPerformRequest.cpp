@@ -61,6 +61,7 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
     size_t pos;
     struct stat statbuf;
     std::pair<std::string, std::string> reqInfo;
+    std::vector<std::string>::const_iterator it, ite;
 
     pos = request_uri.find('?'); // get PATH_INFO
     if (pos != std::string::npos) {
@@ -84,21 +85,37 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
 //            request_uri.replace(0, pos1, route->root);
 //        }
 //    }
-    if (route && !route->cgi_extension.empty()
-        && (pos = request_uri.find(route->cgi_extension)) != std::string::npos) { // is cgi or not
-
-        pos += route->cgi_extension.length();
-        if (pos < request_uri.length()) {
-            reqInfo.second = request_uri.substr(pos + 1); // get QUERY_STRING
+    if (route && !route->cgi_extensions.empty()) {
+        ite = route->cgi_extensions.end();
+        for (std::vector<std::string>::const_iterator it = route->cgi_extensions.begin(); it != ite; ++it) {
+            if (!it->empty() && (pos = request_uri.find(*it)) != std::string::npos) { // is cgi or not
+                pos += it->length();
+                if (pos < request_uri.length()) {
+                    reqInfo.second = request_uri.substr(pos + 1); // get QUERY_STRING
+                }
+                if (reqInfo.second.empty()) {
+                    reqInfo.second = "/";
+                } else {
+                    request_uri.erase(pos);
+                }
+                break ;
+            }
         }
-        if (reqInfo.second.empty()) {
-            reqInfo.second = "/";
-        } else {
-            request_uri.erase(pos);
-        }
-        //request_uri[pos] = '\0';
     }
     return reqInfo;
+//
+//        pos += route->cgi_extension.length();
+//        if (pos < request_uri.length()) {
+//            reqInfo.second = request_uri.substr(pos + 1); // get QUERY_STRING
+//        }
+//        if (reqInfo.second.empty()) {
+//            reqInfo.second = "/";
+//        } else {
+//            request_uri.erase(pos);
+//        }
+//        //request_uri[pos] = '\0';
+//    }
+//    return reqInfo;
 }
 
 int Client::performGetMethod() {

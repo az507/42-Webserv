@@ -69,8 +69,9 @@ std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
     os << std::setw(20) << "dfl_file: " << route.dfl_file << '\n';
     os << std::setw(20) << "upload_dir: " << route.upload_dir << '\n';
     os << std::setw(20) << "prefix_str: " << route.prefix_str << '\n';
-    os << std::setw(20) << "cgi_extension: " << route.cgi_extension << '\n';
-    return os;
+    os << std::setw(20) << "cgi_extensions: ";
+    std::copy(route.cgi_extensions.begin(), route.cgi_extensions.end(), std::ostream_iterator<std::string>(os, ", "));
+    return os << '\n';
 }
 
 std::ostream& operator<<(std::ostream& os, ServerInfo const& serv) {
@@ -78,8 +79,7 @@ std::ostream& operator<<(std::ostream& os, ServerInfo const& serv) {
 
     os << "===ServerInfo===\nserver_names: ";
     std::copy(serv.names.begin(), serv.names.end(), std::ostream_iterator<std::string>(os, ", "));
-    os.put('\n');
-    os << "Ip-addresses: ";
+    os << "\nIp-addresses: ";
     for (std::vector<std::pair<std::string, std::string> >::const_iterator it = serv.ip_addrs.begin(); it != serv.ip_addrs.end(); ++it) {
         os << "-->" << it->first << ':' << it->second << '\n' << std::setw(17);
     }
@@ -117,7 +117,7 @@ void *ConfigFile::convertIdxToAddr(int idx) {
         case ROOT:          return reinterpret_cast<void *>(&servers.back().routes.back().root);
         case DIR_LIST:      return reinterpret_cast<void *>(&servers.back().routes.back().dir_list);
         case DFL_FILE:      return reinterpret_cast<void *>(&servers.back().routes.back().dfl_file);
-        case CGI_EXTENSION: return reinterpret_cast<void *>(&servers.back().routes.back().cgi_extension);
+        case CGI_EXTENSION: return reinterpret_cast<void *>(&servers.back().routes.back().cgi_extensions);
         case UPLOAD_DIR:    return reinterpret_cast<void *>(&servers.back().routes.back().upload_dir);
         default:            std::terminate();
     }
@@ -218,7 +218,7 @@ std::vector<void(ConfigFile::*)(std::vector<std::string> const&, void *)> Config
     setters[6] = &ConfigFile::defaultStringHandler;
     setters[7] = &ConfigFile::dirListHandler;
     setters[8] = &ConfigFile::defaultStringHandler;
-    setters[9] = &ConfigFile::defaultStringHandler;
+    setters[9] = &ConfigFile::defaultVectorHandler;
     setters[10] = &ConfigFile::defaultStringHandler;
     return setters;
 }

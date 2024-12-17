@@ -114,7 +114,8 @@ int main(int argc, char *argv[], char *envp[]) {
                 return std::cerr << "getaddrinfo: " << gai_strerror(err) << '\n', 1;
             }
             for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
-                connfd = socket(p->ai_family, p->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC, p->ai_protocol);
+                //connfd = socket(p->ai_family, p->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC, p->ai_protocol);
+                connfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
                 if (connfd == -1) {
                     perror("socket");
                     continue ;
@@ -206,8 +207,10 @@ int main(int argc, char *argv[], char *envp[]) {
         }
     }
     //std::copy(servers.begin(), servers.end(), std::ostream_iterator<ServerInfo>(std::cout, "\n"));
+    //static uint64_t counter = 0;
     while (1) {
         nfds = epoll_wait(Client::getEpollfd(), events.data(), events.size(), -1); // if not -1, timeout set to 10s here
+        //std::cout << "\t>>> epoll_wait ended! counter = " << ++counter << std::endl;
         if (nfds == -1) {
             if (errno == EINTR) { // epoll_wait interrupted by a signal (probably SIGCHLD, as SIGCHLD handler is installed)
                 errno = 0;
@@ -235,9 +238,11 @@ int main(int argc, char *argv[], char *envp[]) {
                 //------------------------------------
                 //std::cout << "in main, client's fds = " << c_it->getAllFds() << std::endl;
                 if (events[i].events & EPOLLIN) {
+                    //std::cout << "\t>>> INPUT EVENT RECEIVED" << std::endl;
                     c_it->socketRecv();
                 }
                 if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the active_fd can change
+                    //std::cout << "\t>>> OUTPUT EVENT RECEIVED, client's fds = " << c_it->getAllFds() << std::endl;
                     c_it->socketSend();
                 }
                 if (!c_it->isConnClosed()) {
@@ -284,7 +289,8 @@ int main(int argc, char *argv[], char *envp[]) {
             std::cout << "size of clients after: " << clients.size() << std::endl;
         }
         clients.splice(clients.end(), temp, temp.begin(), temp.end());
-        std::fill(events.begin(), events.end(), (struct epoll_event){});
+        memset(events.data(), 0, sizeof(struct epoll_event) * events.size());
+        //std::fill(events.begin(), events.end(), (struct epoll_event){});
         // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
         // clients.erase(c_it, clients.end());
     }
