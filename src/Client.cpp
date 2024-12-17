@@ -92,6 +92,8 @@ void Client::socketRecv() {
 //                            exit(1);
                         } else {
                             std::cerr << "MSG_BODY LENGTH = " << msg_body.length() << '\n';
+                            //std::cout << "in msg_body: " << msg_body << std::endl;
+                            std::cout << "in recvbuf: " << recvbuf << std::endl;
                             send_it = msg_body.begin();
                             send_ite = msg_body.end();
                             close(active_fd);
@@ -136,6 +138,7 @@ void Client::socketSend() {
                         if (io_state == SEND_HTTP) {
                             closeConnection();
                         } else {
+                            msg_body.clear();
                             setIOState(RECV_CGI);
                         }
                         break ;
@@ -150,11 +153,14 @@ void Client::advanceSendIterators(size_t bytes) {
         std::cout << "SENT TO CGI, bytes = " << bytes << std::endl;
         std::cout << "after sending to CGI: active_fd: " << active_fd << ", passive_fd: " << passive_fd << std::endl;
         //throw std::string("abc");
+    } else if (io_state == SEND_HTTP) {
+        std::cout << "sending back to browser, bytes = " << bytes << std::endl;
     }
     if (send_it == send_ite) {
         switch (io_state) {
             case SEND_CGI:
                                 {
+                                    msg_body.clear();
                                     setIOState(RECV_CGI);
                                     break ;
                                 }

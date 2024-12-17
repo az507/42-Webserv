@@ -24,6 +24,7 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
         send_ite = msg_body.end();
         setIOState(SEND_CGI);
     } else {
+        msg_body.clear();
         setIOState(RECV_CGI);
     }
 }

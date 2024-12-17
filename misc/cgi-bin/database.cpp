@@ -59,12 +59,13 @@ void handleFileUpload() {
         strbuf.append(buf, bytes);
     }
     std::copy(strbuf.begin(), strbuf.end(), std::ostreambuf_iterator<char>(outfile));
+    std::string msg = "File uploaded successfully\r\n";
     //std::copy(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>(), std::ostreambuf_iterator<char>(outfile));
     std::cout << "HTTP/1.1 200 OK\r\n";
-    std::cout << "Content-Length: 0\r\n";
+    std::cout << "Content-Length: " << msg.length() << "\r\n";
     std::cout << "Content-Type: text/plain\r\n";
     std::cout << "Connection: keep-alive\r\n\r\n";
-    std::cout << "File uploaded successfully\r\n";
+    std::cout << msg << "\r\n";
 }
 
 void getRequestedFile(const char *filename) {
