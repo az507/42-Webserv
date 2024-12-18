@@ -51,6 +51,7 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
         }
     }
     printServerInfo();
+    //exit(1);
 }
 
 std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {

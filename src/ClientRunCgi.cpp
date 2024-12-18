@@ -6,6 +6,7 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
     if (socketpair(AF_LOCAL, SOCK_STREAM, 0, pipefds) == -1) {
         handle_error("socketpair");
     }
+    std::cout << "\tCHANGING DIR TO " << route->root << " IN CHILD PROCESS" << std::endl;
     switch (fork()) {
         case -1:        handle_error("fork");
         case 0:         if (route && chdir(route->root.c_str()) == -1) {

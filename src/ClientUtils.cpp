@@ -34,7 +34,8 @@ bool Client::isConnClosed() const {
 //    diff = difftime(time(NULL), client_conn_time);
 //    std::cout << "diff in time: " << diff << std::endl;
 //    std::cout << "\t>>> io_state = " << io_state << std::endl;
-    return (io_state == CONN_CLOSED) || (difftime(time(NULL), client_conn_time) > TIMEOUT_VAL);
+    return false;
+    //return (io_state == CONN_CLOSED) || (difftime(time(NULL), client_conn_time) > TIMEOUT_VAL);
         //&& io_state != RECV_CGI && io_state != SEND_CGI));
 }
 

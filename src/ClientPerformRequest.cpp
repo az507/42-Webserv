@@ -3,12 +3,21 @@
 // return 0 to break out of outer do-while loop (to indicate ready to start sending msgs), non-zero for error
 int Client::performRequest() {
     int res = 0;
+    char resolvedpath[PATH_MAX];
     std::pair<std::string, std::string> reqInfo;
 
     std::cout << "1) request_uri: " << request_uri << std::endl;
     reqInfo = filterRequestUri();
     writeInitialPortion();
     std::cout << "2) request_uri: " << request_uri << '\n' << std::endl;
+    // sanitize path here
+    //if (realpath(request_uri.c_str(), (char *)memset(resolvedpath, 0, sizeof(char) * PATH_MAX))) {
+    if (realpath(request_uri.c_str(), resolvedpath)) {
+        request_uri = resolvedpath;
+        std::cout << "AFTER REALPATH: request_uri: " << request_uri << std::endl;
+    } else {
+        perror(request_uri.c_str());
+    }
     if (reqInfo.second.empty()) { // no cgi-extension found
         switch (http_method) {
             case GET_METHOD:            res = performGetMethod(); break ;
@@ -29,7 +38,8 @@ int Client::performRequest() {
 off_t Client::getContentLength(std::string const& filename) const {
     struct stat statbuf;
 
-    if (http_method == GET_METHOD && stat(filename.c_str(), &statbuf) == 0) {
+    std::cout << "\t>>> FILENAME IN GETCONTENTLENGTH() = " << filename << '$' << std::endl;
+    if (/*http_method == GET_METHOD && */stat(filename.c_str(), &statbuf) == 0) {
         return statbuf.st_size;
     } else {
         return -1;
@@ -49,7 +59,7 @@ void Client::writeInitialPortion() {
         oss << headers[conn];
         //std::cout << "1-Connection: " << headers[conn];
     } else {
-        oss << "close";
+        oss << (headers[conn] = "close");
     }
     oss << "\r\n\r\n";
     filebuf = oss.str();
@@ -70,7 +80,12 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
         //request_uri[pos] = '\0';
     }
     if (stat(request_uri.c_str(), &statbuf) == 0 && (statbuf.st_mode & S_IFMT) == S_IFDIR) {
-        if (route && route->dir_list) {
+        if (route && route->dir_list) { // this should be to create html output of current directory
+            ;
+        } else if (route && !route->dfl_file.empty()) {
+            if (*request_uri.rbegin() != '/') {
+                request_uri.push_back('/');
+            }
             pos = request_uri.find('\0');
             if (pos == std::string::npos) {
                 request_uri.append(route->dfl_file);
@@ -180,7 +195,8 @@ int Client::writeToFilebuf(std::string const& filename) {
     
     filestr = filename.c_str();
     //std::cout << "filestr: " << filestr << '\n';
-    if (access(filestr, F_OK) == -1) {
+    if (access(filestr, F_OK | R_OK) == -1) {
+        perror(filestr);
         return setErrorState(404), 0;
     }
     infile.open(filestr);

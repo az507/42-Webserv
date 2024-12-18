@@ -115,6 +115,8 @@ void Client::socketRecv() {
     }
 }
 
+// sometimes the tester provided will fail at 2nd test (not consistent), maybe because there were still chars to be read from socket ? //
+
 void Client::socketSend() {
     ssize_t bytes;
     std::ptrdiff_t dist;
@@ -149,6 +151,9 @@ void Client::socketSend() {
 
 void Client::advanceSendIterators(size_t bytes) {
 
+    std::cout << "\t======MSG TO SEND=======\n";
+    std::cout << (const char *)&*send_it << '\n';
+    std::cout << "\t======END OF MSG========\n";
     std::advance(send_it, bytes);
     if (io_state == SEND_CGI) {
         std::cout << "SENT TO CGI, bytes = " << bytes << std::endl;
@@ -168,20 +173,34 @@ void Client::advanceSendIterators(size_t bytes) {
                                 }
             case SEND_HTTP:     
                                 {
-                                    assert(headers.count("Connection"));
-                                    std::string const& ref = headers["Connection"];
-                                    if (ref == "close") {
+                                    std::map<std::string, std::string>::const_iterator it;
+
+                                    it = headers.find("Connection");
+                                    if (it != headers.end()) {
+                                        if (it->second == "close") {
+                                            closeConnection();
+                                        } else if (it->second == "keep-alive") {
+                                            resetSelf();
+                                            setIOState(RECV_HTTP);
+                                        }
+                                    } else {
                                         closeConnection();
-                                    } else if (ref == "keep-alive") {
-//                                        if (request_uri.find(route->cgi_extension) != std::string::npos) {
-//                                            close(active_fd);
-//                                            std::cout << "exiting..." << std::endl;
-//                                            exit(1);
-//                                        }
-                                        resetSelf();
-                                        setIOState(RECV_HTTP);
                                     }
                                     break ;
+//                                    assert(headers.count("Connection"));
+//                                    std::string const& ref = headers["Connection"];
+//                                    if (ref == "close") {
+//                                        closeConnection();
+//                                    } else if (ref == "keep-alive") {
+////                                        if (request_uri.find(route->cgi_extension) != std::string::npos) {
+////                                            close(active_fd);
+////                                            std::cout << "exiting..." << std::endl;
+////                                            exit(1);
+////                                        }
+//                                        resetSelf();
+//                                        setIOState(RECV_HTTP);
+//                                    }
+//                                    break ;
                                 }
             default:            std::terminate();
         }

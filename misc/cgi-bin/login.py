@@ -26,4 +26,4 @@ if os.path.exists(user_data_file):
                 exit()
 
 print("<h1>Login failed!</h1>")
-print("<p>Invalid username or password. <a href='/login.html'>Try again</a>.</p>")
+print("<p>Invalid username or password. <a href='login.html'>Try again</a>.</p>")

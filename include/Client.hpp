@@ -9,6 +9,7 @@
 # include <sys/epoll.h>
 # include <unistd.h>
 # include <stdint.h>
+# include <limits.h>
 
 # define BUFSIZE 1024
 # define TIMEOUT_VAL 5.0

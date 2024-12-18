@@ -40,6 +40,7 @@ RouteInfo const* Client::findRouteInfo() const {
         if (findpos != std::string::npos && len > max_len) {
             it = p;
             max_len = len;
+            std::cout << "\tMAX_LEN = " << max_len << std::endl;
         }
     }
     assert(it != ite);
@@ -71,16 +72,24 @@ int Client::parseStartLine() {
     assert(recvbuf.length() >= pos + newline.length());
     recvbuf.erase(0, pos + newline.length());
     if (!http_method) {
-        setErrorState(404);
+        setErrorState(405);
     } else if (http_version != "HTTP/1.1") {
         setErrorState(4); // arbitrary numbers for now
     } else {
         route = findRouteInfo();
+//        std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
+//        std::cout << *route << std::endl;
         assert(route);
+        if (!(http_method & route->http_methods)) {
+            setErrorState(405); // Method not allowed
+        }
         // Directory where file should be searched from
         // PATH_INFO could be in uri, eg /infile in .../script.cgi/infile
         this->http_method = http_method;
-        request_uri.replace(0, request_uri.find(route->prefix_str), route->root);
+        std::cout << "Before, request_uri: " << request_uri << std::endl;
+        //request_uri.replace(0, request_uri.find(route->prefix_str), route->root);
+        request_uri.replace(0, route->prefix_str.length(), route->root);
+        std::cout << "After, request_uri: " << request_uri << '\n' << std::endl;
         setPState(HEADERS);
     }
     return 1;
