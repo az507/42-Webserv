@@ -2,6 +2,7 @@
 
 import cgi, os
 
+os.set_blocking(sys.stdin.fileno(), False)
 form = cgi.FieldStorage()
 
 # Get filename here

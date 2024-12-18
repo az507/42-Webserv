@@ -1,8 +1,11 @@
 #!/usr/bin/python3
 
 import cgi
+import sys
 import os
 
+os.set_blocking(sys.stdin.fileno(), False)
+print("HTTP/1.1 200 OK")
 print("Content-type: text/html\r\n\r\n")
 form = cgi.FieldStorage()
 
@@ -10,7 +13,7 @@ username = form.getvalue("username")
 password = form.getvalue("password")
 
 # File storing user data
-user_data_file = "/misc/cgi-bin/tmp/users.txt"
+user_data_file = "misc/cgi-bin/tmp/users.txt"
 
 # Check if the user exists
 if os.path.exists(user_data_file):
