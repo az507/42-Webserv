@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+
+import cgi
+import os
+
+print("Content-type: text/html\r\n\r\n")
+form = cgi.FieldStorage()
+
+username = form.getvalue("username")
+password = form.getvalue("password")
+
+# File storing user data
+user_data_file = "/misc/cgi-bin/tmp/users.txt"
+
+# Ensure the tmp directory exists
+os.makedirs("/misc/cgi-bin/tmp", exist_ok=True)
+
+# Check if the user already exists
+if os.path.exists(user_data_file):
+    with open(user_data_file, "r") as f:
+        users = f.readlines()
+        for user in users:
+            stored_username, _ = user.strip().split(",")
+            if username == stored_username:
+                print(f"<h1>Registration failed!</h1>")
+                print(f"<p>Username '{username}' is already taken. <a href='/register.html'>Try again</a>.</p>")
+                exit()
+
+# Register the new user
+with open(user_data_file, "a") as f:
+    f.write(f"{username},{password}\n")
+
+print("<h1>Registration successful!</h1>")
+print("<p>You can now <a href='/misc/cgi-bin/login.py'>login</a>.</p>")

@@ -1,15 +1,25 @@
------------------------------140852920241981611193399813780
-Content-Disposition: form-data; name="uploaded_file"; filename="time.py"
-Content-Type: text/x-python
-
 #!/usr/bin/python3
 
-import datetime
-import cgi
+import cgi, os
+
+form = cgi.FieldStorage()
+
+# Get filename here
+fileitem = form['filename']
+
+
+# Test if the file was uploaded
+if fileitem.filename:
+   open(os.getcwd() + '/misc/cgi-bin/tmp/' + os.path.basename(fileitem.filename), 'wb').write(fileitem.file.read())
+   message = 'The file "' + os.path.basename(fileitem.filename) + '" was uploaded to ' + os.getcwd() + '/cgi-bin/tmp'
+else:
+   message = 'Uploading Failed'
 
 print("HTTP/1.1 200 OK")
 print("Content-type: text/html\r\n\r\n")
 print("<html>")
 print("<head>")
-print(datetime.datetime.strftime(datetime.datetime.now(), "<h1>  %H:%M:%S </h1>"))
------------------------------140852920241981611193399813780--
+print("<title>Upload Result Page</title>")
+print("<H1> " + message + " </H1>")
+print("</head>")
+print("</html>")
