@@ -27,6 +27,14 @@ namespace std {
     }
 }
 
+template<typename T>
+std::string str_convert(T const& value) {
+    std::ostringstream oss;
+
+    oss << value;
+    return oss.str();
+}
+
 class Client {
     public:
         //Client();

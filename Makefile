@@ -6,7 +6,7 @@
 #    By: xzhang <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/11/11 17:52:33 by xzhang            #+#    #+#              #
-#    Updated: 2024/12/09 18:13:23 by achak            ###   ########.fr        #
+#    Updated: 2024/12/19 17:37:25 by achak            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,7 @@ SRCS = main.cpp src/ConfigFile.cpp src/Server.cpp src/Client.cpp src/ClientParse
 	   src/ClientPerformRequest.cpp src/ClientParseCgi.cpp src/ClientRunCgi.cpp \
 	   src/ClientUtils.cpp
 CPP = g++
-CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g#-fsanitize=address
+CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g -fsanitize=address
 OBJS = $(SRCS:.cpp=.o)
 DEP	= $(OBJS:.o=.d)
 REMOVE = rm -f

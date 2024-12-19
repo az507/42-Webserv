@@ -86,8 +86,8 @@ int main(int argc, char *argv[], char *envp[]) {
     Client::setEnvp(const_cast<const char **>(envp));
 
     if (argc == 1) {
-        //argv[1] = const_cast<char *>("misc/conf/default.conf");
-        argv[1] = const_cast<char *>("misc/conf/tester.conf");
+        argv[1] = const_cast<char *>("misc/conf/default.conf");
+        //argv[1] = const_cast<char *>("misc/conf/tester.conf");
     }
     try {
         servers = ConfigFile(argv[1]).getServerInfo();
