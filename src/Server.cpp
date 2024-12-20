@@ -6,7 +6,7 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 15:52:25 by xzhang            #+#    #+#             */
-/*   Updated: 2024/12/20 14:37:16 by achak            ###   ########.fr       */
+/*   Updated: 2024/12/20 16:43:26 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -387,41 +387,55 @@ std::string Server::createDirListHtml(std::string const& dirpath)
 
 std::string Server::createDirListHtml(std::string const& dirpath) {
     DIR *dirp;
-    size_t pwdlen;
     struct dirent *entry;
-    const char *pwd, *dirname, *absolute_path;
+    const char *pwd, *dirname;//, *absolute_path;
     std::string html, name, pwdstr, relative_path;
 
     dirp = opendir(dirpath.c_str());
     pwd = getenv("PWD");
-    dirname = NULL;
     if (!dirp)
         handle_error("opendir");
     if (!pwd)
         handle_error("getenv");
     pwdstr = pwd;
-    if ((dirname = strstr(dirpath.c_str(), pwd)) && dirpath.size() <= pwdstr.size()) {
-        dirname = NULL;
+    if ((dirname = strstr(dirpath.c_str(), pwd))) {
+        if (!isDirectory(dirname) || dirpath.size() <= pwdstr.size()) {
+            dirname = NULL;
+        } else {
+            dirname += pwdstr.length();
+        }
     }
-    pwdlen = strlen(pwd);
+    std::cout << "\tDIRNAME = " << (dirname ? dirname : "") << ", DIRPATH = " << dirpath << std::endl;
     html = "<html><body><h1>Direrctory Listing </h1><ul>";
     while ((entry = readdir(dirp))) {
         name = entry->d_name;
         if (name == "." || name == "..")
             continue ;
         std::cout << ">>> \tNAME = " << name << std::endl;
-        absolute_path = realpath(name.c_str(), NULL);
-        if (!absolute_path) {
-            if (isDirectory(name)) {
-                absolute_path = name.c_str();
-            } else {
-                handle_error("realpath");
-            }
+//        absolute_path = realpath(name.c_str(), NULL);
+//        if (!absolute_path) {
+//            if (isDirectory(name)) {
+//                absolute_path = name.c_str();
+//            } else {
+//                handle_error("realpath");
+//            }
+//        }
+//        assert(strstr(absolute_path, pwd));
+//        relative_path.assign(absolute_path).replace(0, pwdlen, "");
+        if (dirname) {
+            relative_path.assign(dirname).append(1, '/').append(name);
+        } else {
+            relative_path.assign(name);
         }
-        assert(strstr(absolute_path, pwd));
-        relative_path.assign(absolute_path).replace(0, pwdlen, "");
-        //std::cout << "\tRELATIVE_PATH = " << relative_path << std::endl;
-        html += "<li><a href=\"dirs" + relative_path + "\">" + name + "</a></li>";
+        if (!relative_path.empty() && relative_path[0] == '/') {
+            relative_path.erase(0, 1);
+        }
+        std::cout << "\tRELATIVE_PATH = " << relative_path << std::endl;
+        //if (relative_path.find("dirs") == std::string::npos) {
+            html += "<li><a href=\"/dirs/" + relative_path + "\">" + name + "</a></li>";
+//        } else {
+//            html += "<li><a href=\"" + relative_path + "\">" + name + "</a></li>";
+//        }
     }
     html += "</ul></body></html>";
     return html;

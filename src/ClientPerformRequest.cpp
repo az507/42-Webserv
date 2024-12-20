@@ -16,8 +16,10 @@ int Client::performRequest() {
     if (resolvedpath) {
         request_uri = resolvedpath;
         free(resolvedpath);
+        resolvedpath = NULL;
         std::cout << "AFTER CANONICALIZE_FILE_NAME: request_uri: " << request_uri << std::endl;
     } else {
+        //kill(getpid(), SIGSEGV);
         perror(request_uri.c_str());
     }
     if (reqInfo.second.empty()) { // no cgi-extension found

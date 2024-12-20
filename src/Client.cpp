@@ -103,7 +103,7 @@ void Client::socketRecv() {
                         }
                         break ;
         default:        buf[bytes] = '\0';
-                        std::cout << buf << '\n';
+                        std::cout << buf << std::endl;
 //                        if (io_state == RECV_CGI) {
 //                            throw std::exception();
 //                        }
