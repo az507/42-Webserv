@@ -13,10 +13,10 @@ username = form.getvalue("username")
 password = form.getvalue("password")
 
 # File storing user data
-user_data_file = "misc/cgi-bin/tmp/users.txt"
+user_data_file = "../cgi-bin/tmp/users.txt"
 
 # Ensure the tmp directory exists
-os.makedirs("misc/cgi-bin/tmp", exist_ok=True)
+os.makedirs("../cgi-bin/tmp", exist_ok=True)
 
 # Check if the user already exists
 if os.path.exists(user_data_file):

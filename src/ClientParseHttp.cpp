@@ -88,7 +88,16 @@ int Client::parseStartLine() {
         this->http_method = http_method;
         std::cout << "Before, request_uri: " << request_uri << std::endl;
         //request_uri.replace(0, request_uri.find(route->prefix_str), route->root);
-        request_uri.replace(0, route->prefix_str.length(), route->root);
+        //if (route && request_uri.find(route->root) != std::string::npos) {
+        char resolvedpath[PATH_MAX];
+        if (route->prefix_str.length() > 1 && realpath(request_uri.c_str() + 1, resolvedpath)) {
+            request_uri = resolvedpath;
+        } else {
+            request_uri.replace(0, route->prefix_str.length(), route->root);
+        }
+//        } else {
+//
+//        }
         std::cout << "After, request_uri: " << request_uri << '\n' << std::endl;
         setPState(HEADERS);
     }

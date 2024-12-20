@@ -6,13 +6,14 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 10:31:17 by xzhang            #+#    #+#             */
-/*   Updated: 2024/11/15 12:23:19 by achak            ###   ########.fr       */
+/*   Updated: 2024/12/20 13:59:39 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "Client.hpp"
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -45,6 +46,8 @@ class Server
         ~Server();
         void run();
         std::map<int, std::string> errorpage;
+        static bool isDirectory(std::string const&);
+        static std::string createDirListHtml(std::string const&);
     
     private:
         std::vector<int> serversockets;

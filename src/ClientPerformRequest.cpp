@@ -3,7 +3,7 @@
 // return 0 to break out of outer do-while loop (to indicate ready to start sending msgs), non-zero for error
 int Client::performRequest() {
     int res = 0;
-    char resolvedpath[PATH_MAX];
+    char *resolvedpath;
     std::pair<std::string, std::string> reqInfo;
 
     std::cout << "1) request_uri: " << request_uri << std::endl;
@@ -11,10 +11,12 @@ int Client::performRequest() {
     writeInitialPortion();
     std::cout << "2) request_uri: " << request_uri << '\n' << std::endl;
     // sanitize path here
-    //if (realpath(request_uri.c_str(), (char *)memset(resolvedpath, 0, sizeof(char) * PATH_MAX))) {
-    if (realpath(request_uri.c_str(), resolvedpath)) {
+    //if (realpath(request_uri.c_str(), resolvedpath)) {
+    resolvedpath = canonicalize_file_name(request_uri.c_str());
+    if (resolvedpath) {
         request_uri = resolvedpath;
-        std::cout << "AFTER REALPATH: request_uri: " << request_uri << std::endl;
+        free(resolvedpath);
+        std::cout << "AFTER CANONICALIZE_FILE_NAME: request_uri: " << request_uri << std::endl;
     } else {
         perror(request_uri.c_str());
     }
@@ -121,8 +123,21 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
 }
 
 int Client::performGetMethod() {
+    std::string dirlist;
 
-    if (!writeToFilebuf(request_uri)) {
+    if (route && route->dir_list && Server::isDirectory(request_uri)) {
+        dirlist = Server::createDirListHtml(request_uri);
+        std::cout << "\t===== DIRLIST =====" << std::endl;
+        //std::cout << dirlist << std::endl;
+        //throw std::exception();
+        if (dirlist.empty()) {
+            setErrorState(404);
+        } else {
+            filebuf = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
+                + str_convert(dirlist.length()) + "\r\n\r\n" + dirlist;
+        }
+        std::cout << filebuf << std::endl;
+    } else if (!writeToFilebuf(request_uri)) {
         return -1;
     }
 //    std::cout << "filebuf.length(): " << filebuf.length() << '\n';

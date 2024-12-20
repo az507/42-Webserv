@@ -13,7 +13,7 @@ username = form.getvalue("username")
 password = form.getvalue("password")
 
 # File storing user data
-user_data_file = "misc/cgi-bin/tmp/users.txt"
+user_data_file = "../cgi-bin/tmp/users.txt"
 
 # Check if the user exists
 if os.path.exists(user_data_file):

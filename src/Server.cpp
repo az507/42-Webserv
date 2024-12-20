@@ -6,7 +6,7 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 15:52:25 by xzhang            #+#    #+#             */
-/*   Updated: 2024/11/12 15:52:31 by xzhang           ###   ########.fr       */
+/*   Updated: 2024/12/20 14:37:16 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -341,6 +341,92 @@ void Server::servestaticfile(int clientsocket, std::string filepath)
     }
 }    
 
+/*
+std::string Server::createDirListHtml(std::string const& dirpath)
+{
+    size_t pos, len;
+    char *path, *pwd;
+    std::string temp;
+    DIR *dir = opendir(dirpath.c_str());
+    if (!dir)
+        return "";
+    std::string html = "<html><body><h1>Direrctort Listing </h1><ul>";
+
+    struct dirent *entry;
+    pwd = getenv("PWD");
+    std::cout << "\tPWD = " << pwd << std::endl;
+    len = pwd ? strlen(pwd) : 0;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        std::string name = entry->d_name;
+        std::cout << "\tNAME = " << name << std::endl;
+        if (name == "." || name == "..")
+            continue ;
+        path = canonicalize_file_name(name.c_str());
+        if (path) {
+            std::cout << "\t PATH = " << path << std::endl;
+        } else {
+            perror("canonicalize_file_name");
+            exit(1);
+        }
+        if (path && pwd) {
+            pos = temp.assign(path).find(pwd);
+            if (pos != std::string::npos) {
+                temp.replace(pos, len, "").insert(0, "dirs/");
+                html += "<li><a href=\"" + temp + "\">" + name + "</a></li>\r\n";
+            }
+        }
+        free(path);
+        path = NULL;
+    }
+    html += "</ul>";
+    closedir(dir);
+    return "<html><body>" + html + "</body></html>";
+}
+*/
+
+std::string Server::createDirListHtml(std::string const& dirpath) {
+    DIR *dirp;
+    size_t pwdlen;
+    struct dirent *entry;
+    const char *pwd, *dirname, *absolute_path;
+    std::string html, name, pwdstr, relative_path;
+
+    dirp = opendir(dirpath.c_str());
+    pwd = getenv("PWD");
+    dirname = NULL;
+    if (!dirp)
+        handle_error("opendir");
+    if (!pwd)
+        handle_error("getenv");
+    pwdstr = pwd;
+    if ((dirname = strstr(dirpath.c_str(), pwd)) && dirpath.size() <= pwdstr.size()) {
+        dirname = NULL;
+    }
+    pwdlen = strlen(pwd);
+    html = "<html><body><h1>Direrctory Listing </h1><ul>";
+    while ((entry = readdir(dirp))) {
+        name = entry->d_name;
+        if (name == "." || name == "..")
+            continue ;
+        std::cout << ">>> \tNAME = " << name << std::endl;
+        absolute_path = realpath(name.c_str(), NULL);
+        if (!absolute_path) {
+            if (isDirectory(name)) {
+                absolute_path = name.c_str();
+            } else {
+                handle_error("realpath");
+            }
+        }
+        assert(strstr(absolute_path, pwd));
+        relative_path.assign(absolute_path).replace(0, pwdlen, "");
+        //std::cout << "\tRELATIVE_PATH = " << relative_path << std::endl;
+        html += "<li><a href=\"dirs" + relative_path + "\">" + name + "</a></li>";
+    }
+    html += "</ul></body></html>";
+    return html;
+}
+
 void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
 {
     DIR *dir = opendir(dirpath.c_str());
@@ -369,6 +455,16 @@ void Server::serverdirlisting(int clientsocket, const std::string &dirpath)
                            "<html><body>" + html + "</body></html>";
     send(clientsocket, response.c_str(), response.size(), MSG_DONTWAIT);
 }
+
+bool Server::isDirectory(std::string const& path)
+{
+    struct stat statbuf;// struct stat: file status structure
+
+    if (stat(path.c_str(), &statbuf) != 0) // stat: get file status
+        return (false);
+    return S_ISDIR(statbuf.st_mode); // S_ISDIR: is directory macro in stat.h file
+}
+
 bool Server::isdirectory(const std::string &path)
 {
     struct stat statbuf;// struct stat: file status structure

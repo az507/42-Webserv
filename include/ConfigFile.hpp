@@ -67,8 +67,8 @@ class ConfigFile {
 
         std::ifstream infile;
         std::vector<ServerInfo> servers;
-        std::vector<std::string> keywords;
-        std::vector<void (ConfigFile::*)(std::vector<std::string> const&, void *)> setters;
+        const std::vector<std::string> keywords;
+        const std::vector<void (ConfigFile::*)(std::vector<std::string> const&, void *)> setters;
 
         void *convertIdxToAddr(int);
         void dirListHandler(std::vector<std::string> const&, void *);
