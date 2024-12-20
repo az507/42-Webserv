@@ -37,7 +37,7 @@ RouteInfo const* Client::findRouteInfo() const {
     for (std::vector<RouteInfo>::const_iterator p = server.routes.begin(); p != ite; ++p) {
         len = p->prefix_str.length();
         findpos = request_uri.find(p->prefix_str);
-        if (findpos != std::string::npos && len > max_len) {
+        if (findpos == 0 && /*findpos != std::string::npos &&*/ len > max_len) {
             it = p;
             max_len = len;
             std::cout << "\tMAX_LEN = " << max_len << std::endl;
@@ -68,6 +68,10 @@ int Client::parseStartLine() {
             http_method = 1 << i;  // 1, 2, 4 for GET, POST, DELETE
             break ;
         }
+    }
+    if (http_method == DELETE_METHOD) {
+        std::cerr << "DELETE METHOD ENCOUNTERED, EXITING...\n";
+        exit(1);
     }
     assert(recvbuf.length() >= pos + newline.length());
     recvbuf.erase(0, pos + newline.length());

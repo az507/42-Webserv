@@ -18,5 +18,17 @@
             <!-- <input type="file" id="fname" name="fname"><br><br> -->
             <input type="submit">
         </form>
+        <br><br>
+        <label for="delete"> Folder to delete: </label>
+        <input type="text" id="file" name="folder"><br><br>
+        <button type="button" onclick="calljsfunc(document.getElementById('file'))">Click here </button>
     </body>
+    <script>
+        function calljsfunc(item) {
+                    fetch('http://127.0.0.1:8080/${item}', {
+                method: 'delete',
+                headers: { 'Content-Type': 'application/json' }
+            })
+        }
+    </script>
 </html>
