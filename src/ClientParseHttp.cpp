@@ -69,10 +69,10 @@ int Client::parseStartLine() {
             break ;
         }
     }
-    if (http_method == DELETE_METHOD) {
-        std::cerr << "DELETE METHOD ENCOUNTERED, EXITING...\n";
-        exit(1);
-    }
+//    if (http_method == DELETE_METHOD) {
+//        std::cerr << "DELETE METHOD ENCOUNTERED, EXITING...\n";
+//        exit(1);
+//    }
     assert(recvbuf.length() >= pos + newline.length());
     recvbuf.erase(0, pos + newline.length());
     if (!http_method) {

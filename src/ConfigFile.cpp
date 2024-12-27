@@ -58,6 +58,7 @@ std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
 
     os << std::setw(20) << "===RouteInfo===\n";
     os << std::setw(20) << "dir_list: " << std::boolalpha << route.dir_list << '\n';
+    os << std::setw(20) << "http_methods number val: " << route.http_methods << '\n';
     os << std::setw(20) << "http_methods: ";
     if (route.http_methods & GET_METHOD)
         os << "GET, ";

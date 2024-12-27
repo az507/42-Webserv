@@ -9,7 +9,7 @@ print("Content-type: application/json")
 print()  # Blank line to separate headers from the body
 
 try:
-    tmp_dir = "/home/xzhang/Documents/webserv/misc/cgi-bin/tmp"
+    tmp_dir = "/home/achak/Documents/webserv/misc/cgi-bin/tmp"
     files = [f for f in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, f))]
     
     # Output valid JSON

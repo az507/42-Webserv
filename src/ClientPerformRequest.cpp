@@ -197,12 +197,12 @@ int Client::performDeleteMethod() {
         perror(filename);
         setErrorState(5);
         return -1;
-    } /*else if (std::remove(filename) == -1) { // dont know if we can use this func from cstdio
+    } else if (std::remove(filename) == -1) { // dont know if we can use this func from cstdio
         handle_error("std::remove");
         return -1;
     } else {
         return 0;
-    } */
+    } 
     return 0;
 }
 
@@ -212,7 +212,7 @@ int Client::writeToFilebuf(std::string const& filename) {
     
     filestr = filename.c_str();
     //std::cout << "filestr: " << filestr << '\n';
-    if (access(filestr, F_OK | R_OK) == -1) {
+    if (access(filestr, F_OK | R_OK) == -1 || Server::isDirectory(filename)) {
         perror(filestr);
         return setErrorState(404), 0;
     }
