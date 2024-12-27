@@ -3,34 +3,32 @@
 int Client::epollfd = 0;
 const char **Client::envp = NULL;
 
-Client::Client(int connfd, std::vector<ServerInfo> const& servers) :
-        p_state(START_LINE),
-        io_state(RECV_HTTP) ,
-        http_code(200),
-        http_method(0),
-        active_fd(-1),
-        passive_fd(-1),
-        client_conn_time(time(NULL)),
-        unchunk_flag(false),
-        track_length(false),
-        bytes_left(0),
-        route(NULL),
-        server(initServer(connfd, servers)) {
+Client::Client(int connfd, int sockfd, std::vector<ServerInfo> const& _servers) :
+        _pstate(START_LINE),
+        _iostate(RECV_HTTP) ,
+        _httpcode(200),
+        _httpmethod(0),
+        _clientfd(sockfd),
+        _lastresponsetime(time(NULL)),
+        _unchunkflag(false),
+        _tracklength(false),
+        _bytesleft(0),
+        _route(NULL),
+        _server(initServer(connfd, _servers)) {
         
 }
 
-bool Client::operator!=(int sockfd) const {
-
+bool Client::operator!=(int sockfd) {
     return !(*this == sockfd);
 }
 
-bool Client::operator==(int sockfd) const {
-
-    return sockfd == active_fd;
+bool Client::operator==(int eventfd) {
+    _currptr = std::find_if(_cgis.begin(), _cgis.end(), std::bind2nd(std::mem_fun_ref(&CGI::operator==), eventfd));
+    return _currptr != _cgis.end() || eventfd == _clientfd;
 }
 
 std::ostream& operator<<(std::ostream& os, Client const& obj) {
-    static const char *io_states[] = {
+    static const char *_iostates[] = {
         "RECV_HTTP",
         "SEND_HTTP",
         "RECV_CGI",
@@ -45,31 +43,30 @@ std::ostream& operator<<(std::ostream& os, Client const& obj) {
         "FINISHED",
     };
 
-    //os << "p_state nbr: " << obj.p_state << '\n';
-    os << "p_state: " << parse_states[obj.p_state + 1] << '\n';
-    //os << "io_state nbr: " << obj.io_state << '\n';
-    os << "io_state: " << io_states[obj.io_state] << '\n';
-    os << "http_code: " << obj.http_code << '\n';
-    os << "http_method: " << obj.http_method << '\n';
-    os << "active_fd: " << obj.active_fd << '\n';
-    os << "passive_fd: " << obj.passive_fd << '\n';
+    //os << "_pstate nbr: " << obj._pstate << '\n';
+    os << "_pstate: " << parse_states[obj._pstate + 1] << '\n';
+    //os << "_iostate nbr: " << obj._iostate << '\n';
+    os << "_iostate: " << _iostates[obj._iostate] << '\n';
+    os << "_httpcode: " << obj._httpcode << '\n';
+    os << "_httpmethod: " << obj._httpmethod << '\n';
+    os << "_clientfd: " << obj._clientfd << '\n';
     os << std::boolalpha;
-    os << "unchunk_flag: " << obj.unchunk_flag << '\n';
-    os << "track_length: " << obj.track_length << '\n';
-    os << "bytes_left: " << obj.bytes_left << '\n';
-    os << "recvbuf: " << obj.recvbuf << '\n';
-    os << "filebuf: " << obj.filebuf << '\n';
-    os << "msg_body: " << obj.msg_body << '\n';
-    os << "request_uri: " << obj.request_uri << '\n';
-    // os << obj.route << '\n';
-    // os << obj.server << '\n';
-    os << "send_ite - send_it: " << std::distance(obj.send_it, obj.send_ite) << '\n';
-    std::copy(obj.headers.begin(), obj.headers.end(),
+    os << "_unchunkflag: " << obj._unchunkflag << '\n';
+    os << "_tracklength: " << obj._tracklength << '\n';
+    os << "_bytesleft: " << obj._bytesleft << '\n';
+    os << "_recvbuf: " << obj._recvbuf << '\n';
+    os << "_filebuf: " << obj._filebuf << '\n';
+    os << "_msgbody: " << obj._msgbody << '\n';
+    os << "_requesturi: " << obj._requesturi << '\n';
+    // os << obj._route << '\n';
+    // os << obj._server << '\n';
+    os << "_send_ite - _send_it: " << std::distance(obj._send_it, obj._send_ite) << '\n';
+    std::copy(obj._headers.begin(), obj._headers.end(),
         std::ostream_iterator<std::map<std::string, std::string>::value_type>(os, "\n\n"));
     return os;
 }
 
-// inside parseHttpRequest(), it can call prepareResource() which would change this->io_state to either
+// inside parseHttpRequest(), it can call prepareResource() which would change this->_iostate to either
 // SEND_RECV or SEND_HTTP, meaning that not all data from socket may be read before starting to send data
 // to socket. This could potentially cause problems where socket buffer should be drained first before
 // sending data to client socket
@@ -77,179 +74,83 @@ void Client::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    if (io_state != RECV_HTTP && io_state != RECV_CGI) {
+    if (_iostate != RECV_HTTP) {
         return ;
     }
-    //assert(io_state != RECV_CGI);
-    bytes = recv(active_fd, buf, BUFSIZE, MSG_DONTWAIT);
+    bytes = recv(_clientfd, buf, BUFSIZE, MSG_DONTWAIT);
     switch (bytes) {
         case -1:        //handle_error("recv");
-        case 0:         if (io_state == RECV_HTTP) { // client closed connection ?
-                            //std::terminate();
-                            closeConnection();
-                            //std::cout << "waiting..." << std::endl;
-                            /*pid_t pid = *///wait(NULL);
-//                            std::cout << "pid = " << pid << ", exiting..." << std::endl;
-//                            exit(1);
-                        } else {
-                            std::cerr << "MSG_BODY LENGTH = " << msg_body.length() << '\n';
-                            //std::cout << "in msg_body: " << msg_body << std::endl;
-                            std::cout << "in recvbuf: " << recvbuf << std::endl;
-                            send_it = msg_body.begin();
-                            send_ite = msg_body.end();
-                            close(active_fd);
-                            std::swap(active_fd = -1, passive_fd);
-                            setIOState(SEND_HTTP);      // still unsure about this part
-                        }
-                        break ;
+        case 0:         /* closeCgis(), */closeConnection(); break ;
         default:        buf[bytes] = '\0';
                         std::cout << buf << std::endl;
-//                        if (io_state == RECV_CGI) {
-//                            throw std::exception();
-//                        }
-                        switch (io_state) {
-                            case RECV_HTTP:     parseHttpRequest(buf, bytes); client_conn_time = time(NULL); break ;
-                            case RECV_CGI:      parseCgiOutput(buf, bytes); break ; // both parse funcs may change IOState
-                            default:            std::terminate();
-                        }
+                        parseHttpRequest(buf, bytes); _lastresponsetime = time(NULL); break ;
     }
 }
-
-// sometimes the tester provided will fail at 2nd test (not consistent), maybe because there were still chars to be read from socket ? //
 
 void Client::socketSend() {
     ssize_t bytes;
-    std::ptrdiff_t dist;
+    std::map<std::string, std::string>::const_iterator it;
 
-//    std::cout << "io_state in socketSend(): " << io_state << std::endl;
-    if (io_state != SEND_HTTP && io_state != SEND_CGI) {
+    if (_iostate != SEND_HTTP && _iostate != SEND_CGI) {
         return ;
     }
-    dist = std::distance(send_it, send_ite);
-    //assert(dist > 0);
-    bytes = send(active_fd, &*send_it, dist, MSG_DONTWAIT);
-    if (io_state == SEND_HTTP) {
-        std::cout << "sending to client" << std::endl;
-    } else if (io_state == SEND_CGI) {
-        std::cout << "sending to CGI" << std::endl;
-    }
-    std::cout << "bytes sent: " << bytes << ", dist: " << dist << std::endl;
-    switch (bytes) {
-        // send returns -1 when broken pipe for cgi, SIGPIPE gets sent, for now assume that connection is broken
-        case -1:
-        case 0:         perror("send");
-                        if (io_state == SEND_HTTP) {
-                            closeConnection();
-                        } else {
-                            msg_body.clear();
-                            setIOState(RECV_CGI);
-                        }
-                        break ;
-        default:        advanceSendIterators(bytes);
-    }
-}
-
-void Client::advanceSendIterators(size_t bytes) {
-
-    std::cout << "\t======MSG TO SEND=======\n";
-    std::cout << (const char *)&*send_it << '\n';
-    std::cout << "\t======END OF MSG========\n";
-    std::advance(send_it, bytes);
-    if (io_state == SEND_CGI) {
-        std::cout << "SENT TO CGI, bytes = " << bytes << std::endl;
-        std::cout << "after sending to CGI: active_fd: " << active_fd << ", passive_fd: " << passive_fd << std::endl;
-        //throw std::string("abc");
-    } else if (io_state == SEND_HTTP) {
-        std::cout << "sending back to browser, bytes = " << bytes << std::endl;
-        /*****/client_conn_time = time(NULL);
-    }
-    if (send_it == send_ite) {
-        switch (io_state) {
-            case SEND_CGI:
-                                {
-                                    msg_body.clear();
-                                    setIOState(RECV_CGI);
-                                    break ;
+    if (!_cgis.empty() && _currptr != _cgis.end()) {
+        if (!_currptr->socketSend()) { // if done sending msg to client (SEND_HTTP)
+            _cgis.erase(_currptr);
+        }
+    } else {
+        bytes = send(_clientfd, &*_send_it, std::distance(_send_it, _send_ite), MSG_DONTWAIT);
+        switch (bytes) {
+            case -1:
+            case 0:         perror("send client"); closeConnection(); break ;
+            default:        std::advance(_send_it, bytes);
+                            if (_send_it == _send_ite) {
+                                it = _headers.find("Connection");
+                                if (it == _headers.end() || it->second == "close") {
+                                    closeConnection();
+                                } else {
+                                    resetSelf();
                                 }
-            case SEND_HTTP:     
-                                {
-                                    std::map<std::string, std::string>::const_iterator it;
-
-                                    it = headers.find("Connection");
-                                    if (it != headers.end()) {
-                                        if (it->second == "close") {
-                                            closeConnection();
-                                        } else if (it->second == "keep-alive") {
-                                            resetSelf();
-                                            setIOState(RECV_HTTP);
-                                        }
-                                    } else {
-                                        closeConnection();
-                                    }
-                                    break ;
-//                                    assert(headers.count("Connection"));
-//                                    std::string const& ref = headers["Connection"];
-//                                    if (ref == "close") {
-//                                        closeConnection();
-//                                    } else if (ref == "keep-alive") {
-////                                        if (request_uri.find(route->cgi_extension) != std::string::npos) {
-////                                            close(active_fd);
-////                                            std::cout << "exiting..." << std::endl;
-////                                            exit(1);
-////                                        }
-//                                        resetSelf();
-//                                        setIOState(RECV_HTTP);
-//                                    }
-//                                    break ;
-                                }
-            default:            std::terminate();
+                            }
         }
     }
 }
 
 void Client::closeConnection() {
-
-    deleteEvent(active_fd);
-    deleteEvent(passive_fd);
-    close(active_fd);
-    close(passive_fd);
-    p_state = START_LINE;
-    io_state = RECV_HTTP;
-    http_code = 200;
-    http_method = 0;
-    active_fd = -1;
-    passive_fd = -1;
-    unchunk_flag = false;
-    track_length = false;
-    bytes_left = 0;
-    recvbuf.clear();
-    filebuf.clear();
-    msg_body.clear();
-    request_uri.clear();
-    route = NULL;
-    headers.clear();
+    deleteEvent(_clientfd);
+    close(_clientfd);
+    _clientfd = -1;
+    _pstate = START_LINE;
+    _iostate = RECV_HTTP;
+    _httpcode = 200;
+    _httpmethod = 0;
+    _unchunkflag = false;
+    _tracklength = false;
+    _bytesleft = 0;
+    _recvbuf.clear();
+    _filebuf.clear();
+    _msgbody.clear();
+    _requesturi.clear();
+    _route = NULL;
+    _headers.clear();
     //memset(this, 0, sizeof(*this));
     setIOState(CONN_CLOSED);
 }
 
 void Client::resetSelf() {
-
-    if (passive_fd != -1) {
-        close(passive_fd);
-        passive_fd = -1;
-    }
-    recvbuf.clear();
-    filebuf.clear();
-    msg_body.clear();
-    request_uri.clear();
-    route = NULL;
-    send_it = send_ite = filebuf.end();
-    headers.clear();
+    _recvbuf.clear();
+    _filebuf.clear();
+    _msgbody.clear();
+    _requesturi.clear();
+    _route = NULL;
+    _send_it = _send_ite = _filebuf.end();
+    _headers.clear();
+    std::for_each(_cgis.begin(), _cgis.end(), std::mem_fun_ref(&CGI::cleanup));
+    _cgis.clear();
 }
 
 void Client::deleteEvent(int fd) {
-
-    if (fd > 0) {
+    if (fd != -1) {
         if (epoll_ctl(Client::epollfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
             handle_error("del: epoll_ctl");
         }
@@ -259,23 +160,23 @@ void Client::deleteEvent(int fd) {
 void Client::setErrorState(int num) {
     std::map<int, std::string>::const_iterator it;
 
-    http_code = num;
+    _httpcode = num;
     setPState(ERROR);
     setIOState(SEND_HTTP);
-    it = ServerInfo::error_pages.find(http_code);
+    it = ServerInfo::error_pages.find(_httpcode);
     if (it != ServerInfo::error_pages.end() && access(it->second.c_str(), F_OK | R_OK) == 0) {
-        request_uri = it->second;
+        _requesturi = it->second;
         writeInitialPortion();
-        writeToFilebuf(request_uri);
+        writeToFilebuf(_requesturi);
     }
-    send_it = filebuf.begin();
-    send_ite = filebuf.end();
+    _send_it = _filebuf.begin();
+    _send_ite = _filebuf.end();
 }
 
-ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& servers) const {
+ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& _servers) const {
     std::vector<ServerInfo>::const_iterator it, ite;
 
-    for (it = servers.begin(), ite = servers.end(); it != ite; ++it) {
+    for (it = _servers.begin(), ite = _servers.end(); it != ite; ++it) {
         //std::copy(it->connfds.begin(), it->connfds.end(), std::ostream_iterator<int>(std::cout, "\n"));
         if (std::find_if(it->connfds.begin(), it->connfds.end(), std::bind2nd(std::equal_to<int>(), connfd)) != it->connfds.end()) {
             break ;
@@ -285,7 +186,7 @@ ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& 
     return *it;
 }
 
-std::string Client::getContentType(std::string const& filename) const {
+std::string Client::getContentType(std::string const& filename) {
     size_t pos;
     std::map<std::string, std::string>::const_iterator it;
     static const std::map<std::string, std::string> contentTypes( Client::initContentTypes() );
@@ -303,11 +204,11 @@ std::string Client::getContentType(std::string const& filename) const {
     }
 }
 
-std::string Client::getHttpStatus(int http_code) const {
+std::string Client::getHttpStatus(int _httpcode) {
     std::map<int, std::string>::const_iterator it;
     static const std::map<int, std::string> httpStatuses( Client::initHttpStatuses() );
 
-    it = httpStatuses.find(http_code);
+    it = httpStatuses.find(_httpcode);
     if (it == httpStatuses.end()) {
         return "Undefined";
     } else {
