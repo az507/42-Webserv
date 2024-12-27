@@ -195,10 +195,11 @@ int Client::performDeleteMethod() {
     filename = request_uri.c_str();
     if (access(filename, F_OK) == -1) {
         perror(filename);
-        setErrorState(5);
+        setErrorState(404);
         return -1;
     } else if (std::remove(filename) == -1) { // dont know if we can use this func from cstdio
         handle_error("std::remove");
+        setErrorState(500);
         return -1;
     } else {
         return 0;
