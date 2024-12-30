@@ -99,7 +99,8 @@ void Client::socketSend() {
             _cgis.erase(_currptr);
         }
     } else {
-        bytes = send(_clientfd, &*_send_it, std::distance(_send_it, _send_ite), MSG_DONTWAIT);
+        std::ptrdiff_t dist;
+        bytes = send(_clientfd, &*_send_it, dist = std::distance(_send_it, _send_ite), MSG_DONTWAIT);
         switch (bytes) {
             case -1:
             case 0:         perror("send client"); closeConnection(); break ;
@@ -108,8 +109,10 @@ void Client::socketSend() {
                                 it = _headers.find("Connection");
                                 if (it == _headers.end() || it->second == "close") {
                                     closeConnection();
-                                } else {
+                                } else if (it->second == "keep-alive") {
                                     resetSelf();
+                                } else {
+                                    std::terminate();
                                 }
                             }
         }
@@ -147,6 +150,8 @@ void Client::resetSelf() {
     _headers.clear();
     std::for_each(_cgis.begin(), _cgis.end(), std::mem_fun_ref(&CGI::cleanup));
     _cgis.clear();
+    setPState(START_LINE);
+    setIOState(RECV_HTTP);
 }
 
 void Client::deleteEvent(int fd) {
