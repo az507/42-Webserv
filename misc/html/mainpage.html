@@ -6,16 +6,16 @@
     <title>A HTML Page</title>
     <style>
         /* Set the GIF as the background */
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-image: url('/resources/cat-space.gif');
+        body /* Select the body element */{
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack children vertically */
+            align-items: center; /* Center children horizontally */
+            height: 100vh; /* Set the height to 100% of the viewport height */
+            margin: 0; /* Remove default margin */
+            font-family: Arial, sans-serif; /* Use Arial font */
+            background-image: url('/resources/cat-space.gif'); /* Set the GIF as the background */
             background-size: cover; /* Make sure the GIF covers the entire page */
-            background-position: center center;
+            background-position: center center; /* Center the GIF */
             background-attachment: fixed; /* Keeps the background fixed while scrolling */
             color: white; /* Ensure the text is visible against the GIF */
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6); /* Add text shadow for readability */
