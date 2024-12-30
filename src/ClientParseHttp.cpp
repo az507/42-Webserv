@@ -61,7 +61,7 @@ int Client::parseStartLine() {
     }
     iss.str(recvbuf.substr(0, pos));
     if (!(iss >> http_str) || !(iss >> request_uri) || !(iss >> http_version)) {
-        return setErrorState(1), 1;
+        return setErrorState(400), 1;
     }
     for (int i = 0; i < 3; ++i) {
         if (http_str == methods[i]) {
