@@ -193,44 +193,97 @@ int Client::trackRecvBytes(size_t bytes) {
     }
 }
 
-int Client::unchunkRequest() { // only unchunking of request will require a intermediate temp buffer to selectively read bytes into msg_body
-    uint64_t bytes;
-    std::istringstream iss;
-    std::string::const_iterator it1, it2, ite;
-    std::string::const_reverse_iterator r_it1, r_it2, r_ite;
-    static const std::string newline = "\r\n";
+// int Client::unchunkRequest() { // only unchunking of request will require a intermediate temp buffer to selectively read bytes into msg_body
+//     uint64_t bytes;
+//     std::istringstream iss;
+//     std::string::const_iterator it1, it2, ite;
+//     std::string::const_reverse_iterator r_it1, r_it2, r_ite;
+//     static const std::string newline = "\r\n";
 
-    it1 = it2 = recvbuf.begin();
-    ite = recvbuf.end();
-    r_ite = recvbuf.rend();
-    while (1) {
-        it1 = std::find(it1, ite, '\r');
-        if (it1 == ite || std::distance(it1, ite) < static_cast<std::ptrdiff_t>(newline.length())) {
-            break ;
+//     it1 = it2 = recvbuf.begin();
+//     ite = recvbuf.end();
+//     r_ite = recvbuf.rend();
+//     while (1) {
+//         it1 = std::find(it1, ite, '\r');
+//         if (it1 == ite || std::distance(it1, ite) < static_cast<std::ptrdiff_t>(newline.length())) {
+//             break ;
+//         }
+//         if (!strncmp(&*it1, newline.c_str(), newline.length())) { // check if its "\r\n"
+//             r_it1 = recvbuf.rend() - std::distance(static_cast<std::string::const_iterator>(recvbuf.begin()), it1) - 1;
+//             //r_it2 = std::find_if(++r_it1, r_ite, std::unary_negate<std::pointer_to_unary_function<int, int> >(std::ptr_fun(&isdigit)));
+//             r_it2 = std::find_if(++r_it1, r_ite, std::not1(std::ptr_fun(&isdigit)));
+//             iss.str(std::string(r_it1, r_it2));
+//             if (!(iss >> bytes)) { // integer overflow
+//                 return setErrorState(8), -1;
+//             }
+//             iss.clear();
+//             if (!bytes) {
+//                 return setPState(FINISHED), 1;
+//             }
+//             std::advance(it1, newline.length());
+//             if (std::distance(it1, ite) < static_cast<std::ptrdiff_t>(bytes)) {
+//                 break ; // need more bytes, wait for next recv
+//             }
+//             msg_body.insert(msg_body.end(), it1, it1 + bytes);
+//             it1 = std::find(it1, ite, '\n');
+//             it2 = it1 + 1; // only after a successful extraction, then we move the it2(old) iterator forward
+//         } else {
+//             ++it1;
+//         }
+//     }
+//     recvbuf.erase(recvbuf.begin(), recvbuf.end() - std::distance(static_cast<std::string::const_iterator>(recvbuf.begin()), it2));
+//     return 0;
+// }
+
+int Client::unchunkRequest() 
+{
+    static const std::string newline = "\r\n";
+    size_t pos;
+
+    while (true) {
+        // Find the position of the first newline (end of chunk size line)
+        pos = recvbuf.find(newline);
+        if (pos == std::string::npos) 
+        {
+            break; // Wait for more data
         }
-        if (!strncmp(&*it1, newline.c_str(), newline.length())) { // check if its "\r\n"
-            r_it1 = recvbuf.rend() - std::distance(static_cast<std::string::const_iterator>(recvbuf.begin()), it1) - 1;
-            //r_it2 = std::find_if(++r_it1, r_ite, std::unary_negate<std::pointer_to_unary_function<int, int> >(std::ptr_fun(&isdigit)));
-            r_it2 = std::find_if(++r_it1, r_ite, std::not1(std::ptr_fun(&isdigit)));
-            iss.str(std::string(r_it1, r_it2));
-            if (!(iss >> bytes)) { // integer overflow
-                return setErrorState(8), -1;
-            }
-            iss.clear();
-            if (!bytes) {
-                return setPState(FINISHED), 1;
-            }
-            std::advance(it1, newline.length());
-            if (std::distance(it1, ite) < static_cast<std::ptrdiff_t>(bytes)) {
-                break ; // need more bytes, wait for next recv
-            }
-            msg_body.insert(msg_body.end(), it1, it1 + bytes);
-            it1 = std::find(it1, ite, '\n');
-            it2 = it1 + 1; // only after a successful extraction, then we move the it2(old) iterator forward
-        } else {
-            ++it1;
+
+        // Parse the chunk size in hexadecimal
+        std::istringstream iss(recvbuf.substr(0, pos));
+        size_t chunk_size;
+        if (!(iss >> std::hex >> chunk_size)) 
+        {
+            return setErrorState(400), -1; // Invalid chunk size
         }
+
+        // Remove the chunk size line from the buffer
+        recvbuf.erase(0, pos + newline.length());
+
+        // Check if it's the last chunk
+        if (chunk_size == 0) 
+        {
+            // Look for the final newline (after trailing headers)
+            pos = recvbuf.find(newline);
+            if (pos != 0) {
+                // Process trailing headers if necessary
+                // (Optional: implement trailing headers handling)
+            }
+            recvbuf.clear(); // Clear the buffer
+            return setPState(FINISHED), 1; // Parsing finished
+        }
+
+        // Ensure the buffer contains the full chunk data and trailing \r\n
+        if (recvbuf.size() < chunk_size + newline.length()) 
+        {
+            break; // Wait for more data
+        }
+
+        // Append the chunk data to msg_body
+        msg_body.append(recvbuf, 0, chunk_size);
+
+        // Remove the chunk data and trailing \r\n from the buffer
+        recvbuf.erase(0, chunk_size + newline.length());
     }
-    recvbuf.erase(recvbuf.begin(), recvbuf.end() - std::distance(static_cast<std::string::const_iterator>(recvbuf.begin()), it2));
-    return 0;
+
+    return 0; // Wait for more data
 }
