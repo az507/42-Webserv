@@ -163,11 +163,11 @@ int Client::performGetMethod() {
 // }
 
 int Client::performPostMethod() {
-    std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary);
+    std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::ate);
 
     if (!outfile.is_open()) {
         perror(request_uri.c_str());
-        setErrorState(4);
+        setErrorState(403);
         return -1;
     }
     

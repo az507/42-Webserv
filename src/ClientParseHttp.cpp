@@ -240,7 +240,8 @@ int Client::unchunkRequest()
     static const std::string newline = "\r\n";
     size_t pos;
 
-    while (true) {
+    while (true) 
+    {
         // Find the position of the first newline (end of chunk size line)
         pos = recvbuf.find(newline);
         if (pos == std::string::npos) 
@@ -283,6 +284,8 @@ int Client::unchunkRequest()
 
         // Remove the chunk data and trailing \r\n from the buffer
         recvbuf.erase(0, chunk_size + newline.length());
+        std::cerr << "Chunk size: " << chunk_size << ", Buffer size: " << recvbuf.size() << "\n";
+        std::cerr << "Chunk data: " << recvbuf.substr(0, chunk_size) << "\n";
     }
 
     return 0; // Wait for more data
