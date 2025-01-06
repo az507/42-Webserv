@@ -177,12 +177,12 @@ int Client::performPostMethod() {
         }
         if (!outfile) {
             std::cerr << "Error writing to file: " << request_uri << '\n';
-            setErrorState(5);
+            setErrorState(500); //Internal sever error
             return -1;
         }
     } catch (std::exception const& e) {
         std::cerr << "Error writing to file: " << e.what() << '\n';
-        setErrorState(6);
+        setErrorState(500);//internal sever error
         return -1;
     }
     outfile.close();

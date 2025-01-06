@@ -76,9 +76,9 @@ int Client::parseStartLine() {
     assert(recvbuf.length() >= pos + newline.length());
     recvbuf.erase(0, pos + newline.length());
     if (!http_method) {
-        setErrorState(405);
+        setErrorState(405); //Method Not Allowed
     } else if (http_version != "HTTP/1.1") {
-        setErrorState(4); // arbitrary numbers for now
+        setErrorState(505); //HTTP Version Not Supporte
     } else {
         route = findRouteInfo();
 //        std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
@@ -166,13 +166,13 @@ bool Client::configureIOMethod(std::map<std::string, std::string> const& headers
     static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
 
     if (headers.count(content_length) && headers.count(transfer_encoding)) {
-        setErrorState(1); // both headers should never exist together
+        setErrorState(400);//bad request // both headers should never exist together
         return false;
     }
     if (headers.count(content_length)) {
         track_length = true;
         if (!(std::istringstream(headers.find(content_length)->second) >> bytes_left)) { // num too large
-            setErrorState(1);
+            setErrorState(400);//bad request
             return false;
         }
     }
