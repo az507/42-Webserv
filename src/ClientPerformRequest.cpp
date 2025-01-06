@@ -20,7 +20,7 @@ int Client::performRequest() {
         std::cout << "AFTER CANONICALIZE_FILE_NAME: request_uri: " << request_uri << std::endl;
     } else {
         //kill(getpid(), SIGSEGV);
-        perror(request_uri.c_str());
+        //perror(request_uri.c_str());
     }
     if (reqInfo.second.empty()) { // no cgi-extension found
         switch (http_method) {
@@ -57,7 +57,8 @@ void Client::writeInitialPortion() {
 
     oss << "HTTP/1.1 " << http_code << ' ' << getHttpStatus(http_code) << "\r\n";
     //oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
-    oss << "Content-Length: " << getContentLength(request_uri) << "\r\n";
+    if (Client::unchunk_flag == false)
+        oss << "Content-Length: " << getContentLength(request_uri) << "\r\n";
     oss << conn << ": ";
     if (headers.count(conn)) {
         oss << headers[conn];
@@ -163,12 +164,12 @@ int Client::performGetMethod() {
 // }
 
 int Client::performPostMethod() {
-    std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::ate);
+    std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
 
     if (!outfile.is_open()) {
         perror(request_uri.c_str());
         setErrorState(403);
-        return -1;
+        return (1);
     }
     
     try {
