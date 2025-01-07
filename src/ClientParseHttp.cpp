@@ -87,6 +87,15 @@ int Client::parseStartLine() {
         if (!(_httpmethod & _route->http_methods)) {
             setErrorState(405); // Method not allowed
         }
+        std::cout << "Before, _requesturi: " << _requesturi << std::endl;
+        //_requesturi.replace(0, _requesturi.find(_route->prefix_str), _route->root);
+        //if (_route && _requesturi.find(_route->root) != std::string::npos) {
+        char resolvedpath[PATH_MAX];
+        if (_route->prefix_str.length() > 1 && realpath(_requesturi.c_str() + 1, resolvedpath)) {
+            _requesturi = resolvedpath;
+        } else {
+            _requesturi.replace(0, _route->prefix_str.length(), _route->root);
+        }
         std::vector<std::string>::const_iterator it;
         for (it = _route->cgi_extensions.begin(); it != _route->cgi_extensions.end(); ++it)
         {
@@ -103,15 +112,6 @@ int Client::parseStartLine() {
         // Directory where file should be searched from
         // PATH_INFO could be in uri, eg /infile in .../script.cgi/infile
         this->_httpmethod = _httpmethod;
-        std::cout << "Before, _requesturi: " << _requesturi << std::endl;
-        //_requesturi.replace(0, _requesturi.find(_route->prefix_str), _route->root);
-        //if (_route && _requesturi.find(_route->root) != std::string::npos) {
-        char resolvedpath[PATH_MAX];
-        if (_route->prefix_str.length() > 1 && realpath(_requesturi.c_str() + 1, resolvedpath)) {
-            _requesturi = resolvedpath;
-        } else {
-            _requesturi.replace(0, _route->prefix_str.length(), _route->root);
-        }
 //        } else {
 //
 //        }

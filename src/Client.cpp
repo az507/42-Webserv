@@ -131,7 +131,7 @@ void Client::socketSend() {
                             if (_send_it == _send_ite) {
                                 it = _headers.find("Connection");
                                 if (it == _headers.end() || it->second == "close") {
-                                    assert(0);
+                                    //assert(0);
                                     closeConnection();
                                 } else if (it->second == "keep-alive") {
                                     resetSelf();
