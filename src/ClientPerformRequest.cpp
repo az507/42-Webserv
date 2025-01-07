@@ -30,14 +30,14 @@ int Client::performRequest() {
             default:                    std::terminate();
         }
         setIOState(SEND_HTTP);
-    } else if (access(request_uri.c_str(), F_OK | X_OK) == 0) {
+    } else if (access(_requesturi.c_str(), F_OK | X_OK) == 0) {
         runCgiScript(reqInfo);
     }
     else {
         setErrorState(404);
         return(0);
     }
-    if (p_state != ERROR) {
+    if (_pstate != ERROR) {
         setPState(START_LINE); // reset state keep alive
     }
     return res;
@@ -59,10 +59,10 @@ void Client::writeInitialPortion() {
     std::ostringstream oss;
     static const std::string conn = "Connection";
 
-    oss << "HTTP/1.1 " << http_code << ' ' << getHttpStatus(http_code) << "\r\n";
+    oss << "HTTP/1.1 " << _httpcode << ' ' << getHttpStatus(_httpcode) << "\r\n";
     //oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
-    if (Client::http_method == 1 || p_state == ERROR)
-        oss << "Content-Length: " << getContentLength(request_uri) << "\r\n";
+    if (Client::_httpmethod == 1 || _pstate == ERROR)
+        oss << "Content-Length: " << getContentLength(_requesturi) << "\r\n";
     else
         oss << "Content-Length: 0\r\n";
     oss << conn << ": ";
@@ -170,10 +170,10 @@ int Client::performGetMethod() {
 // }
 
 int Client::performPostMethod() {
-    std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+    std::ofstream outfile(_requesturi.c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
 
     if (!outfile.is_open()) {
-        perror(request_uri.c_str());
+        perror(_requesturi.c_str());
         setErrorState(403);
         return (1);
     }
@@ -183,7 +183,7 @@ int Client::performPostMethod() {
             outfile.write(&_msgbody[0], _msgbody.size());
         }
         if (!outfile) {
-            std::cerr << "Error writing to file: " << request_uri << '\n';
+            std::cerr << "Error writing to file: " << _requesturi << '\n';
             setErrorState(500); //Internal sever error
             return -1;
         }

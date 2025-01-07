@@ -59,8 +59,8 @@ int Client::parseStartLine() {
     if (pos == std::string::npos) {
         return 0;
     }
-    iss.str(recvbuf.substr(0, pos));
-    if (!(iss >> http_str) || !(iss >> request_uri) || !(iss >> http_version)) {
+    iss.str(_recvbuf.substr(0, pos));
+    if (!(iss >> http_str) || !(iss >> _requesturi) || !(iss >> http_version)) {
         return setErrorState(400), 1;
     }
     for (int i = 0; i < 3; ++i) {
@@ -73,9 +73,9 @@ int Client::parseStartLine() {
 //        std::cerr << "DELETE METHOD ENCOUNTERED, EXITING...\n";
 //        exit(1);
 //    }
-    assert(recvbuf.length() >= pos + newline.length());
-    recvbuf.erase(0, pos + newline.length());
-    if (!http_method) {
+    assert(_recvbuf.length() >= pos + newline.length());
+    _recvbuf.erase(0, pos + newline.length());
+    if (!_httpmethod) {
         setErrorState(405); //Method Not Allowed
     } else if (http_version != "HTTP/1.1") {
         setErrorState(505); //HTTP Version Not Supporte
@@ -88,16 +88,16 @@ int Client::parseStartLine() {
             setErrorState(405); // Method not allowed
         }
         std::vector<std::string>::const_iterator it;
-        for (it = route->cgi_extensions.begin(); it != route->cgi_extensions.end(); ++it)
+        for (it = _route->cgi_extensions.begin(); it != _route->cgi_extensions.end(); ++it)
         {
-            if (request_uri.find(*it) != std::string::npos)
+            if (_requesturi.find(*it) != std::string::npos)
             {
-                if (access(request_uri.c_str(), X_OK | F_OK) == -1)
+                if (access(_requesturi.c_str(), X_OK | F_OK) == -1)
                     return setErrorState(404), -1;
                 break ;
             }
         }
-        if (it == route->cgi_extensions.end() && access(request_uri.c_str(), F_OK | R_OK) == -1) {
+        if (it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1) {
             return setErrorState(404), -1;
         }
         // Directory where file should be searched from
@@ -178,13 +178,13 @@ int Client::parseMsgBody(size_t bytes) { // need to handle chunked encoding
 bool Client::configureIOMethod(std::map<std::string, std::string> const& _headers) {
     static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
 
-    if (headers.count(content_length) && headers.count(transfer_encoding)) {
+    if (_headers.count(content_length) && _headers.count(transfer_encoding)) {
         setErrorState(400);//bad request // both headers should never exist together
         return false;
     }
-    if (headers.count(content_length)) {
-        track_length = true;
-        if (!(std::istringstream(headers.find(content_length)->second) >> bytes_left)) { // num too large
+    if (_headers.count(content_length)) {
+        _tracklength = true;
+        if (!(std::istringstream(_headers.find(content_length)->second) >> _bytesleft)) { // num too large
             setErrorState(400);//bad request
             return false;
         }
@@ -256,14 +256,14 @@ int Client::unchunkRequest()
     while (true) 
     {
         // Find the position of the first newline (end of chunk size line)
-        pos = recvbuf.find(newline);
+        pos = _recvbuf.find(newline);
         if (pos == std::string::npos) 
         {
             break; // Wait for more data
         }
 
         // Parse the chunk size in hexadecimal
-        std::istringstream iss(recvbuf.substr(0, pos));
+        std::istringstream iss(_recvbuf.substr(0, pos));
         size_t chunk_size;
         if (!(iss >> std::hex >> chunk_size)) 
         {
@@ -271,34 +271,34 @@ int Client::unchunkRequest()
         }
 
         // Remove the chunk size line from the buffer
-        recvbuf.erase(0, pos + newline.length());
+        _recvbuf.erase(0, pos + newline.length());
 
         // Check if it's the last chunk
         if (chunk_size == 0) 
         {
             // Look for the final newline (after trailing headers)
-            pos = recvbuf.find(newline);
+            pos = _recvbuf.find(newline);
             if (pos != 0) {
                 // Process trailing headers if necessary
                 // (Optional: implement trailing headers handling)
             }
-            recvbuf.clear(); // Clear the buffer
+            _recvbuf.clear(); // Clear the buffer
             return setPState(FINISHED), 1; // Parsing finished
         }
 
         // Ensure the buffer contains the full chunk data and trailing \r\n
-        if (recvbuf.size() < chunk_size + newline.length()) 
+        if (_recvbuf.size() < chunk_size + newline.length()) 
         {
             break; // Wait for more data
         }
 
         // Append the chunk data to msg_body
-        msg_body.append(recvbuf, 0, chunk_size);
+        _msgbody.append(_recvbuf, 0, chunk_size);
 
         // Remove the chunk data and trailing \r\n from the buffer
-        recvbuf.erase(0, chunk_size + newline.length());
-        std::cerr << "Chunk size: " << chunk_size << ", Buffer size: " << recvbuf.size() << "\n";
-        std::cerr << "Chunk data: " << recvbuf.substr(0, chunk_size) << "\n";
+        _recvbuf.erase(0, chunk_size + newline.length());
+        std::cerr << "Chunk size: " << chunk_size << ", Buffer size: " << _recvbuf.size() << "\n";
+        std::cerr << "Chunk data: " << _recvbuf.substr(0, chunk_size) << "\n";
     }
     return 0; // Wait for more data
 }
