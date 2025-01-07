@@ -28,7 +28,7 @@ bool Client::operator==(int eventfd) {
         _currptr = std::find_if(_cgis.begin(), _cgis.end(), std::bind2nd(std::mem_fun_ref(&CGI::operator==), eventfd));
     }
     if (_currptr != _cgis.end()) {
-        std::cout << "Found cgi event, size: " << _cgis.size() << std::endl;
+        //std::cout << "Found cgi event, size: " << _cgis.size() << std::endl;
     }
     return _currptr != _cgis.end() || eventfd == _clientfd;
 }
@@ -80,7 +80,7 @@ void Client::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    std::cout << "parent in socketRecv" << std::endl;
+    //std::cout << "parent in socketRecv" << std::endl;
     assert(_iostate != RECV_CGI);
     if (_iostate == RECV_HTTP && _cgis.empty()) {
         bytes = recv(_clientfd, buf, BUFSIZE, MSG_DONTWAIT);
@@ -118,8 +118,8 @@ void Client::socketSend() {
     ssize_t bytes;
     std::map<std::string, std::string>::const_iterator it;
 
-    std::cout << "parent in socketSend, _iostate = " << _iostate << ", fds: ";
-    printFds();
+//    std::cout << "parent in socketSend, _iostate = " << _iostate << ", fds: ";
+//    printFds();
     assert(_iostate != SEND_CGI);
     if (_iostate == SEND_HTTP && _cgis.empty()) {
         std::ptrdiff_t dist;
@@ -147,7 +147,7 @@ void Client::socketSend() {
             //assert(0);
         }
     } else {
-        std::cout << "bypassing Client::socketSend() for now" << std::endl;
+        //std::cout << "bypassing Client::socketSend() for now" << std::endl;
         //assert(0);
     }
 }

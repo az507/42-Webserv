@@ -7,7 +7,7 @@ CGI::CGI(int state, int cgifd, int clientfd) :
 int CGI::socketSend() {
     ssize_t bytes;
 
-    std::cout << "cgi in socketSend()" << std::endl;
+    //std::cout << "cgi in socketSend()" << std::endl;
     assert(_iostate == Client::SEND_CGI || _iostate == Client::SEND_HTTP);
     bytes = send(_activefd, &*_send_it, std::distance(_send_it, _send_ite),
         MSG_DONTWAIT);
@@ -25,7 +25,7 @@ int CGI::socketSend() {
                                 _iostate = Client::RECV_CGI;
                                 break ;
                             } else {
-                                std::cout << "_activefd: " << _activefd << ", _passivefd: " << _passivefd << std::endl;
+                                //std::cout << "_activefd: " << _activefd << ", _passivefd: " << _passivefd << std::endl;
                                 //assert(0);
                                 return setFinishedState(), 0;
                             }
@@ -54,10 +54,10 @@ void CGI::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    std::cout << "cgi in socketRecv()" << std::endl;
+    //std::cout << "cgi in socketRecv()" << std::endl;
     assert(_iostate == Client::RECV_CGI);
     bytes = recv(_activefd, buf, BUFSIZE, MSG_DONTWAIT);
-    std::cout << "bytes recv'd in cgi: " << bytes << std::endl;
+    //std::cout << "bytes recv'd in cgi: " << bytes << std::endl;
     switch (bytes) {
         case -1:        handle_error("recv cgi");
         case 0:         setClientReady(); break ;
@@ -118,7 +118,7 @@ void CGI::parseCgiOutput(const char *buf, ssize_t bytes) {
     if (_pstate == Client::MSG_BODY && _tracklength) {
         bytes = std::min(_recvbytes, (size_t)bytes);
         _clientbuf.append(buf, bytes);
-        std::cout << "parseCgiOutput with _tracklength, bytes: " << bytes << std::endl;
+        //std::cout << "parseCgiOutput with _tracklength, bytes: " << bytes << std::endl;
         if (!_recvbytes) {
             setClientReady();
         }
@@ -185,7 +185,7 @@ void CGI::configureIOHandling() {
         _unchunkflag = true;
     }
     _pstate = Client::MSG_BODY;
-    std::cout << "_recvbytes: " << _recvbytes << std::endl;
+    //std::cout << "_recvbytes: " << _recvbytes << std::endl;
 }
 
 int CGI::parseMsgBody() {

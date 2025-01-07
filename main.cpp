@@ -206,15 +206,15 @@ int main(int argc, char *argv[], char *envp[]) {
             }
             return perror("epoll_wait"), 1;
         }
-        std::cout << "\tnfds: " << nfds << std::endl;
+        //std::cout << "\tnfds: " << nfds << std::endl;
         for (int i = 0; i < nfds; ++i) {
             if (events[i].data.fd > max_connfd) { // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
                 c_it = std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i].data.fd));
                 if (c_it == clients.end()) { // if reached here, probably is stored in one of clients' passive_fd
-                    std::cout << "no client obj found with this fd (" << events[i].data.fd << "), continuing..." << std::endl;
+                    //std::cout << "no client obj found with this fd (" << events[i].data.fd << "), continuing..." << std::endl;
                     continue ;
                 }
-                std::cout << "in main, event_fd: " << events[i].data.fd << std::endl;
+                //std::cout << "in main, event_fd: " << events[i].data.fd << std::endl;
                 if (events[i].events & EPOLLIN) {
                     c_it->socketRecv();
                 }
@@ -253,10 +253,10 @@ int main(int argc, char *argv[], char *envp[]) {
         // can also put timeout condition in isConnClosed() func so can remove all dead or inactive connections in 1 call
         c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isConnClosed));
         if (c_it != clients.end()) {
-            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
+//            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
 //            std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
 //            clients.erase(c_it, clients.end());
-            std::cout << "size of clients after: " << clients.size() << std::endl;
+//            std::cout << "size of clients after: " << clients.size() << std::endl;
         }
         //clients.splice(clients.end(), temp, temp.begin(), temp.end());
         //memset(events.data(), 0, sizeof(struct epoll_event) * events.size());
