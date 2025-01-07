@@ -3,7 +3,7 @@
 void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
     int pipefds[2];
 
-    if (socketpair(AF_LOCAL, SOCK_STREAM, 0, pipefds) == -1) {
+    if (socketpair(AF_LOCAL, SOCK_STREAM/*| SOCK_CLOEXEC*/, 0, pipefds) == -1) {
         handle_error("socketpair");
     }
     switch (fork()) {
@@ -15,12 +15,14 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
                         executeCgi(pipefds[1], reqInfo);
                         throw std::exception(); // force stack unwinding of child process if execve failed
         default:        close(pipefds[1]);
-                        registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
+                        Client::registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
     }
     if (_httpmethod == POST_METHOD) {
+        std::cout << "cgi object created (SEND_CGI)" << std::endl;
         _cgis.push_back(CGI(SEND_CGI, pipefds[0], _clientfd));
         _cgis.back().setCgiInput(_msgbody);
     } else {
+        std::cout << "cgi object created (RECV_CGI)" << std::endl;
         _cgis.push_back(CGI(RECV_CGI, pipefds[0], _clientfd));
     }
     setIOState(RECV_HTTP);
@@ -110,10 +112,10 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
 void Client::registerEvent(int fd, uint32_t events) {
     struct epoll_event ev;
 
-    (void)events;
+    //(void)events;
     memset(&ev, 0, sizeof(ev));
     ev.data.fd = fd;
-    ev.events = EPOLLIN | EPOLLOUT;
+    ev.events = events;//EPOLLIN | EPOLLOUT;
     if (epoll_ctl(Client::epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         handle_error("RE: epoll_ctl");
     }

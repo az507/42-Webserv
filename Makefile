@@ -6,7 +6,7 @@
 #    By: xzhang <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/11/11 17:52:33 by xzhang            #+#    #+#              #
-#    Updated: 2024/12/30 14:16:56 by achak            ###   ########.fr        #
+#    Updated: 2025/01/06 11:58:08 by achak            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ NAME = webserv
 SRCS = main.cpp src/ConfigFile.cpp src/Server.cpp src/Client.cpp src/ClientParseHttp.cpp \
 	   src/ClientPerformRequest.cpp  src/ClientRunCgi.cpp src/ClientUtils.cpp src/Cgi.cpp
 CPP = g++
-CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g -fsanitize=address
+CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g#-fsanitize=address
 OBJS = $(SRCS:.cpp=.o)
 DEP	= $(OBJS:.o=.d)
 REMOVE = rm -f

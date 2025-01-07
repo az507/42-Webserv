@@ -23,7 +23,13 @@ bool Client::operator!=(int sockfd) {
 }
 
 bool Client::operator==(int eventfd) {
-    _currptr = std::find_if(_cgis.begin(), _cgis.end(), std::bind2nd(std::mem_fun_ref(&CGI::operator==), eventfd));
+    //std::cout << "in Client::operator==, eventfd = " << eventfd << std::endl;
+    if (!_cgis.empty()) {
+        _currptr = std::find_if(_cgis.begin(), _cgis.end(), std::bind2nd(std::mem_fun_ref(&CGI::operator==), eventfd));
+    }
+    if (_currptr != _cgis.end()) {
+        std::cout << "Found cgi event, size: " << _cgis.size() << std::endl;
+    }
     return _currptr != _cgis.end() || eventfd == _clientfd;
 }
 
@@ -74,31 +80,48 @@ void Client::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    if (_iostate != RECV_HTTP) {
-        return ;
+    std::cout << "parent in socketRecv" << std::endl;
+    assert(_iostate != RECV_CGI);
+    if (_iostate == RECV_HTTP && _cgis.empty()) {
+        bytes = recv(_clientfd, buf, BUFSIZE, MSG_DONTWAIT);
+        switch (bytes) {
+            case -1:        //handle_error("client recv");
+            case 0:         /* closeCgis(), */closeConnection(); break ;
+            default:        buf[bytes] = '\0';
+                            std::cout << buf << std::endl;
+                            parseHttpRequest(buf, bytes); _lastresponsetime = time(NULL); break ;
+        }
+    } else if (!_cgis.empty() && _currptr != _cgis.end() && _currptr->getIOState() == RECV_CGI) {
+        _currptr->socketRecv();
+    } else {
+        //assert(0);
     }
-    bytes = recv(_clientfd, buf, BUFSIZE, MSG_DONTWAIT);
-    switch (bytes) {
-        case -1:        //handle_error("recv");
-        case 0:         /* closeCgis(), */closeConnection(); break ;
-        default:        buf[bytes] = '\0';
-                        std::cout << buf << std::endl;
-                        parseHttpRequest(buf, bytes); _lastresponsetime = time(NULL); break ;
+}
+
+void Client::printFds() const {
+    std::cout << "_clientfd: " << _clientfd << ", ";
+    if (_cgis.empty()) {
+        std::cout << "(no cgi fd here)";
+    } else {
+        int idx = -1;
+        for (std::list<CGI>::const_iterator it = _cgis.begin(); it != _cgis.end(); ++it) {
+            if (&*it != &*_currptr) {
+                std::cout << "_currptr: ";
+            }
+            std::cout << ++idx << ") " << it->getFds();
+        }
     }
+    std::cout << std::endl;
 }
 
 void Client::socketSend() {
     ssize_t bytes;
     std::map<std::string, std::string>::const_iterator it;
 
-    if (_iostate != SEND_HTTP && _iostate != SEND_CGI) {
-        return ;
-    }
-    if (!_cgis.empty() && _currptr != _cgis.end()) {
-        if (!_currptr->socketSend()) { // if done sending msg to client (SEND_HTTP)
-            _cgis.erase(_currptr);
-        }
-    } else {
+    std::cout << "parent in socketSend, _iostate = " << _iostate << ", fds: ";
+    printFds();
+    assert(_iostate != SEND_CGI);
+    if (_iostate == SEND_HTTP && _cgis.empty()) {
         std::ptrdiff_t dist;
         bytes = send(_clientfd, &*_send_it, dist = std::distance(_send_it, _send_ite), MSG_DONTWAIT);
         switch (bytes) {
@@ -108,19 +131,29 @@ void Client::socketSend() {
                             if (_send_it == _send_ite) {
                                 it = _headers.find("Connection");
                                 if (it == _headers.end() || it->second == "close") {
+                                    assert(0);
                                     closeConnection();
                                 } else if (it->second == "keep-alive") {
                                     resetSelf();
                                 } else {
                                     std::terminate();
-                                }
+                               }
                             }
         }
+    } else if (!_cgis.empty() && _currptr != _cgis.end() && _currptr->getIOState() == SEND_HTTP) {
+        if (!_currptr->socketSend()) {
+            _cgis.erase(_currptr);
+            _currptr = _cgis.end();
+            //assert(0);
+        }
+    } else {
+        std::cout << "bypassing Client::socketSend() for now" << std::endl;
+        //assert(0);
     }
 }
 
 void Client::closeConnection() {
-    deleteEvent(_clientfd);
+    Client::deleteEvent(_clientfd);
     close(_clientfd);
     _clientfd = -1;
     _pstate = START_LINE;
@@ -137,6 +170,9 @@ void Client::closeConnection() {
     _route = NULL;
     _headers.clear();
     //memset(this, 0, sizeof(*this));
+//    std::for_each(_cgis.begin(), _cgis.end(), std::mem_fun_ref(&CGI::cleanup));
+//    _cgis.clear();
+//    _currptr = _cgis.end();
     setIOState(CONN_CLOSED);
 }
 
@@ -150,6 +186,7 @@ void Client::resetSelf() {
     _headers.clear();
     std::for_each(_cgis.begin(), _cgis.end(), std::mem_fun_ref(&CGI::cleanup));
     _cgis.clear();
+    _currptr = _cgis.end();
     setPState(START_LINE);
     setIOState(RECV_HTTP);
 }

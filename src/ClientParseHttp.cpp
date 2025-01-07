@@ -119,7 +119,7 @@ int Client::parseHeaders(size_t& bytes) {
         return 0;
     }
     iss.str(_recvbuf.substr(0, pos));
-    while (!getline(iss, buf).eof()) {
+    while (!std::getline(iss, buf).eof()) {
         if (!iss) {
             iss.exceptions(iss.rdstate());
         } else {

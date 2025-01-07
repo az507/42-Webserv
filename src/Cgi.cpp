@@ -7,6 +7,7 @@ CGI::CGI(int state, int cgifd, int clientfd) :
 int CGI::socketSend() {
     ssize_t bytes;
 
+    std::cout << "cgi in socketSend()" << std::endl;
     assert(_iostate == Client::SEND_CGI || _iostate == Client::SEND_HTTP);
     bytes = send(_activefd, &*_send_it, std::distance(_send_it, _send_ite),
         MSG_DONTWAIT);
@@ -24,11 +25,17 @@ int CGI::socketSend() {
                                 _iostate = Client::RECV_CGI;
                                 break ;
                             } else {
+                                std::cout << "_activefd: " << _activefd << ", _passivefd: " << _passivefd << std::endl;
+                                //assert(0);
                                 return setFinishedState(), 0;
                             }
                         }
     }
     return 1;
+}
+
+int CGI::getIOState() const {
+    return _iostate;
 }
 
 bool CGI::operator==(int fd) const {
@@ -37,6 +44,7 @@ bool CGI::operator==(int fd) const {
 
 void CGI::cleanup() {
     if (_activefd != -1 && _passivefd != -1) {
+        Client::deleteEvent(_activefd);
         close(_activefd);
     }
     _activefd = _passivefd = -1;
@@ -46,7 +54,10 @@ void CGI::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
+    std::cout << "cgi in socketRecv()" << std::endl;
+    assert(_iostate == Client::RECV_CGI);
     bytes = recv(_activefd, buf, BUFSIZE, MSG_DONTWAIT);
+    std::cout << "bytes recv'd in cgi: " << bytes << std::endl;
     switch (bytes) {
         case -1:        handle_error("recv cgi");
         case 0:         setClientReady(); break ;
@@ -54,10 +65,16 @@ void CGI::socketRecv() {
     }
 }
 
+std::pair<int, int> CGI::getFds() const {
+    return std::make_pair(_activefd, _passivefd);
+}
+
 void CGI::setClientReady() {
     _iostate = Client::SEND_HTTP;
     _send_it = _clientbuf.begin();
     _send_ite = _clientbuf.end();
+    assert(_activefd != -1 && _passivefd != -1);
+    Client::deleteEvent(_activefd);
     close(_activefd);
     std::swap(_passivefd, _activefd = -1);
 }
@@ -82,22 +99,26 @@ void CGI::setErrorState(int httpcode) {
     _send_ite = _clientbuf.end();
     _pstate = Client::ERROR;
     _iostate = Client::SEND_HTTP;
+    assert(_activefd != -1 && _passivefd != -1);
+    Client::deleteEvent(_activefd);
     close(_activefd);
     std::swap(_activefd = -1, _passivefd);
 }
 
 void CGI::setFinishedState() {
     _iostate = Client::CONN_CLOSED;
-    close(_activefd);
+    //close(_activefd);
     _activefd = -1;
 }
 
 void CGI::parseCgiOutput(const char *buf, ssize_t bytes) {
     int res;
 
+    assert(bytes > 0);
     if (_pstate == Client::MSG_BODY && _tracklength) {
         bytes = std::min(_recvbytes, (size_t)bytes);
         _clientbuf.append(buf, bytes);
+        std::cout << "parseCgiOutput with _tracklength, bytes: " << bytes << std::endl;
         if (!_recvbytes) {
             setClientReady();
         }
@@ -110,34 +131,34 @@ void CGI::parseCgiOutput(const char *buf, ssize_t bytes) {
             case Client::START_LINE:    res = ignoreStartLine(); break ;
             case Client::HEADERS:       res = parseCgiHeaders(); break ;
             case Client::MSG_BODY:      res = parseMsgBody(); break ;
-            default:                    return setClientReady();
+            case Client::FINISHED:      return setClientReady();
+            default:                    assert(0);
         }
     }
     while (res);
 }
 
 int CGI::ignoreStartLine() {
-    return _clientbuf.find("\r\n") == std::string::npos ? 0 : ++_iostate;
+    return _clientbuf.find("\r\n") == std::string::npos ? 0 : ++_pstate;
 }
 
 int CGI::parseCgiHeaders() {
     std::string line;
     size_t pos1, pos2;
     std::istringstream iss;
-    std::map<std::string, std::string> _headers;
 
     pos1 = _clientbuf.find("\r\n\r\n");
     if (pos1 == std::string::npos) {
         return 0;
     }
-    iss.str(_clientbuf.substr(0, pos1));
-    while (!getline(iss, line).eof()) {
+    iss.str(_clientbuf.substr(0, pos1 + 2));
+    while (!std::getline(iss, line).eof()) {
         if (!iss) {
             iss.exceptions(iss.rdstate());
         } else {
-            pos2 = line.find('=');
+            pos2 = line.find(':');
             if (pos2 != std::string::npos) {
-                _headers[line.substr(0, pos2)] = line.substr(pos2 + 1);
+                _headers[line.substr(0, pos2)] = line.substr(pos2 + 2, line.length() - pos2 - 3);
             }
         }
     }
@@ -151,6 +172,7 @@ void CGI::configureIOHandling() {
     it1 = _headers.find("Content-Length");
     it2 = _headers.find("Transfer-Encoding");
     ite = _headers.end();
+
     if (it1 != ite && it2 != ite) {
         return setErrorState(2);
     } else if (it1 != ite) {
@@ -162,6 +184,8 @@ void CGI::configureIOHandling() {
     } else if (it2 != ite && it2->second == "chunked") {
         _unchunkflag = true;
     }
+    _pstate = Client::MSG_BODY;
+    std::cout << "_recvbytes: " << _recvbytes << std::endl;
 }
 
 int CGI::parseMsgBody() {

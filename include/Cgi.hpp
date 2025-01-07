@@ -6,7 +6,7 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 10:29:48 by xzhang            #+#    #+#             */
-/*   Updated: 2024/12/27 15:19:26 by achak            ###   ########.fr       */
+/*   Updated: 2025/01/06 14:57:11 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,8 @@ class CGI {
         void socketRecv();
         void setCgiInput(std::string const&);
         void cleanup();
+        std::pair<int, int> getFds() const;
+        int getIOState() const;
         bool operator==(int) const;
     private:
         int ignoreStartLine();

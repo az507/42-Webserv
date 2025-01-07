@@ -18,11 +18,13 @@ void Client::setEnvp(const char **envp) {
 
 void Client::closeFds() {
     if (_clientfd != -1) {
+        Client::deleteEvent(_clientfd);
         close(_clientfd);
         _clientfd = -1;
     }
     std::for_each(_cgis.begin(), _cgis.end(), std::mem_fun_ref(&CGI::cleanup));
     _cgis.clear();
+    _currptr = _cgis.end();
 }
 
 bool Client::isConnClosed() const {
@@ -31,7 +33,11 @@ bool Client::isConnClosed() const {
 //    diff = difftime(time(NULL), _lastresponsetime);
 //    std::cout << "diff in time: " << diff << std::endl;
 //    std::cout << "\t>>> _iostate = " << _iostate << std::endl;
-    //return false;
+//    return false;
+//    bool io_cond = _iostate == CONN_CLOSED;
+//    bool tm_cond = difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL;
+//    std::cout << std::boolalpha << "io_cond: " << io_cond << ", tm_cond: " << tm_cond << std::endl;
+//    return io_cond || tm_cond;
     return (_iostate == CONN_CLOSED) || (difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL);
         //&& _iostate != RECV_CGI && _iostate != SEND_CGI));
 }

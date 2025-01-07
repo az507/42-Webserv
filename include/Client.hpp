@@ -15,7 +15,7 @@
 # include <limits.h>
 
 # define BUFSIZE 1024
-# define TIMEOUT_VAL 5.0
+# define TIMEOUT_VAL 100.0
 # define handle_error(err) \
     do { std::cout << err << ": " << strerror(errno) << '\n'; exit(EXIT_FAILURE); } while (0);
 
@@ -79,9 +79,14 @@ class Client {
         static off_t getContentLength(std::string const&);
         static std::string getContentType(std::string const&);
 
+        static void deleteEvent(int);
+        static void registerEvent(int, uint32_t);
+
         friend std::ostream& operator<<(std::ostream&, Client const&);
 
     private:
+        void printFds() const;
+
         static std::map<int, std::string> initHttpStatuses();
         static std::map<std::string, std::string> initContentTypes();
 
@@ -99,7 +104,6 @@ class Client {
         void resetSelf();
 
         void advanceSendIterators(size_t);
-        void deleteEvent(int);
 
         void parseHttpRequest(const char *, size_t);
         RouteInfo const* findRouteInfo() const;
@@ -125,7 +129,6 @@ class Client {
         void runCgiScript(std::pair<std::string, std::string> const&);
         std::vector<char *> initCgiEnv(std::pair<std::string, std::string> const&) const;
         void executeCgi(int, std::pair<std::string, std::string> const&);
-        void registerEvent(int, uint32_t);
 
         int _pstate; // at which stage of parsing this object is currently in
         int _iostate; // should object be receiving/sending data at the moment
