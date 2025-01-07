@@ -79,7 +79,7 @@ int main(int argc, char *argv[], char *envp[]) {
     const char *node, *service;
     int err, connfd, optval = 1;
     struct addrinfo hints, *res;
-    std::vector<ServerInfo> servers;
+    std::vector<ServerInfo> _servers;
 
     signal(SIGPIPE, SIG_IGN);
     //signal(SIGCHLD, &sigchldHandler);
@@ -90,16 +90,16 @@ int main(int argc, char *argv[], char *envp[]) {
         //argv[1] = const_cast<char *>("misc/conf/tester.conf");
     }
     try {
-        servers = ConfigFile(argv[1]).getServerInfo();
+        _servers = ConfigFile(argv[1]).getServerInfo();
     } catch (std::exception const& e) {
         return std::cerr << e.what() << '\n', 1;
     }
     int idx = 0;
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
         std::cout << "\tnumber " << ++idx << '\n';
         assert(!it->routes.empty());
     }
-    for (std::vector<ServerInfo>::iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::iterator it = _servers.begin(); it != _servers.end(); ++it) {
         for (std::vector<std::pair<std::string, std::string> >::const_iterator tmp = it->ip_addrs.begin(); tmp != it->ip_addrs.end(); ++tmp) {
             memset(&hints, 0, sizeof(hints));
             hints.ai_family = AF_INET;
@@ -148,7 +148,7 @@ int main(int argc, char *argv[], char *envp[]) {
         }
     }
 
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
         if (std::find_if(it->connfds.begin(), it->connfds.end(), std::bind2nd(std::ptr_fun(&listen), MAXEVENTS)) != it->connfds.end()) {
             return perror("listen"), 1;
         }
@@ -163,7 +163,7 @@ int main(int argc, char *argv[], char *envp[]) {
     if (pwd) {
         std::cout << "PWD: " << pwd << '\n';
     }
-    for (std::vector<ServerInfo>::iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::iterator it = _servers.begin(); it != _servers.end(); ++it) {
         for (std::vector<RouteInfo>::iterator tmp = it->routes.begin(); tmp != it->routes.end(); ++tmp) {
             if (!tmp->root.empty() && tmp->root.find('/') == std::string::npos && pwd) {
 //                tmp->root.insert(tmp->root.begin(), '/');
@@ -177,41 +177,28 @@ int main(int argc, char *argv[], char *envp[]) {
     socklen_t addrlen;
     struct sockaddr addr;
     int nfds, sockfd, max_connfd;
-    std::list<Client> clients, temp;
+    std::list<Client> clients;//, temp;
     std::list<Client>::iterator c_it;
-    struct epoll_event ev;//, events[MAXEVENTS];
+    //struct epoll_event ev;//, events[MAXEVENTS];
     std::vector<struct epoll_event> events(MAXEVENTS);
-
-    // timeout recv/write after 10s
-//    struct timeval tv;
-//    tv.tv_sec = 10;
-//    tv.tv_usec = 0;
 
     Client::setEpollfd(epoll_create(1));
     if (Client::getEpollfd() == -1) {
         return perror("epoll_create"), 1;
     }
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
         for (std::vector<int>::const_iterator tmp = it->connfds.begin(); tmp != it->connfds.end(); ++tmp) {
-            memset(&ev, 0, sizeof(ev));
-            ev.data.fd = *tmp;
-            ev.events = EPOLLIN;
-            if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, *tmp, &ev) == -1) {
-                return perror("1) epoll_ctl"), 1;
-            }
+            Client::registerEvent(*tmp, EPOLLIN);
         }
     }
     max_connfd = std::numeric_limits<int>::min();
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
         if (!it->connfds.empty()) {
             max_connfd = std::max(max_connfd, *std::max_element(it->connfds.begin(), it->connfds.end()));
         }
     }
-    //std::copy(servers.begin(), servers.end(), std::ostream_iterator<ServerInfo>(std::cout, "\n"));
-    //static uint64_t counter = 0;
     while (1) {
         nfds = epoll_wait(Client::getEpollfd(), events.data(), events.size(), -1); // if not -1, timeout set to 10s here
-        //std::cout << "\t>>> epoll_wait ended! counter = " << ++counter << std::endl;
         if (nfds == -1) {
             if (errno == EINTR) { // epoll_wait interrupted by a signal (probably SIGCHLD, as SIGCHLD handler is installed)
                 errno = 0;
@@ -219,36 +206,24 @@ int main(int argc, char *argv[], char *envp[]) {
             }
             return perror("epoll_wait"), 1;
         }
+        //std::cout << "\tnfds: " << nfds << std::endl;
         for (int i = 0; i < nfds; ++i) {
-//            std::cout << "events[" << i << "].data.fd = " << events[i].data.fd << ", max_connfd: " << max_connfd << '\n';
             if (events[i].data.fd > max_connfd) { // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
                 c_it = std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i].data.fd));
-                //assert(c_it != clients.end());
                 if (c_it == clients.end()) { // if reached here, probably is stored in one of clients' passive_fd
-//                    std::cout << "event fd: " << events[i].data.fd << '\n';
-//                    std::copy(clients.begin(), clients.end(), std::ostream_iterator<Client>(std::cout, "\n"));
-//                    exit(1);
+                    //std::cout << "no client obj found with this fd (" << events[i].data.fd << "), continuing..." << std::endl;
                     continue ;
                 }
-                //-----------------------------------
-                // if (isCgiRequest(requestPath)) { // A condition to check if it's a CGI request
-                // handleCgiScript(requestPath, c_it->getActiveFd());
-                // } else {
-                // c_it->socketRecv();
-                // }
-                //------------------------------------
-                //std::cout << "in main, client's fds = " << c_it->getAllFds() << std::endl;
+                //std::cout << "in main, event_fd: " << events[i].data.fd << std::endl;
                 if (events[i].events & EPOLLIN) {
-                    //std::cout << "\t>>> INPUT EVENT RECEIVED" << std::endl;
                     c_it->socketRecv();
                 }
-                if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the active_fd can change
-                    //std::cout << "\t>>> OUTPUT EVENT RECEIVED, client's fds = " << c_it->getAllFds() << std::endl;
+                if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the _activefd can change
                     c_it->socketSend();
                 }
-                if (!c_it->isConnClosed()) {
-                    temp.splice(temp.begin(), clients, c_it);
-                }
+//                if (!c_it->isConnClosed()) {
+//                    temp.splice(temp.begin(), clients, c_it);
+//                }
             } else {
                 addrlen = 0;
                 memset(&addr, 0, sizeof(addr));
@@ -271,39 +246,33 @@ int main(int argc, char *argv[], char *envp[]) {
 //                    handle_error("setsockopt send");
 //                }
 //                if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER
-                memset(&ev, 0, sizeof(ev));
-                ev.data.fd = sockfd;
-                ev.events = EPOLLIN | EPOLLOUT;
-                if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_ADD, sockfd, &ev) == -1) {
-                    return perror("2) epoll_ctl"), 1;
-                }
-                clients.push_back(Client(events[i].data.fd, servers));
-                clients.back().setActiveFd(sockfd);
+                Client::registerEvent(sockfd, EPOLLIN | EPOLLOUT);
+                clients.push_back(Client(events[i].data.fd, sockfd, _servers));
             }
         }
         // can also put timeout condition in isConnClosed() func so can remove all dead or inactive connections in 1 call
         c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isConnClosed));
         if (c_it != clients.end()) {
-            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
-            std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
-            clients.erase(c_it, clients.end());
-            std::cout << "size of clients after: " << clients.size() << std::endl;
+//            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
+//            std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
+//            clients.erase(c_it, clients.end());
+//            std::cout << "size of clients after: " << clients.size() << std::endl;
         }
-        clients.splice(clients.end(), temp, temp.begin(), temp.end());
-        memset(events.data(), 0, sizeof(struct epoll_event) * events.size());
-        //std::fill(events.begin(), events.end(), (struct epoll_event){});
+        //clients.splice(clients.end(), temp, temp.begin(), temp.end());
+        //memset(events.data(), 0, sizeof(struct epoll_event) * events.size());
+        std::fill(events.begin(), events.end(), (struct epoll_event){});
         // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
         // clients.erase(c_it, clients.end());
     }
 
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
         for (std::vector<int>::const_iterator tmp = it->connfds.begin(); tmp != it->connfds.end(); ++tmp) {
             if (epoll_ctl(Client::getEpollfd(), EPOLL_CTL_DEL, *tmp, NULL) == -1) {
                 return perror("3) epoll_ctl"), 1;
             }
         }
     }
-    for (std::vector<ServerInfo>::const_iterator it = servers.begin(); it != servers.end(); ++it) {
+    for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
         std::for_each(it->connfds.begin(), it->connfds.end(), &close);
     }
     std::for_each(clients.begin(), clients.end(), std::mem_fun_ref(&Client::closeFds));

@@ -6,24 +6,24 @@ int Client::performRequest() {
     char *resolvedpath;
     std::pair<std::string, std::string> reqInfo;
 
-    std::cout << "1) request_uri: " << request_uri << std::endl;
+    std::cout << "1) _requesturi: " << _requesturi << std::endl;
     reqInfo = filterRequestUri();
     writeInitialPortion();
-    std::cout << "2) request_uri: " << request_uri << '\n' << std::endl;
+    std::cout << "2) _requesturi: " << _requesturi << '\n' << std::endl;
     // sanitize path here
-    //if (realpath(request_uri.c_str(), resolvedpath)) {
-    resolvedpath = canonicalize_file_name(request_uri.c_str());
+    //if (realpath(_requesturi.c_str(), resolvedpath)) {
+    resolvedpath = canonicalize_file_name(_requesturi.c_str());
     if (resolvedpath) {
-        request_uri = resolvedpath;
+        _requesturi = resolvedpath;
         free(resolvedpath);
         resolvedpath = NULL;
-        std::cout << "AFTER CANONICALIZE_FILE_NAME: request_uri: " << request_uri << std::endl;
+        std::cout << "AFTER CANONICALIZE_FILE_NAME: _requesturi: " << _requesturi << std::endl;
     } else {
         //kill(getpid(), SIGSEGV);
         //perror(request_uri.c_str());
     }
     if (reqInfo.second.empty()) { // no cgi-extension found
-        switch (http_method) {
+        switch (_httpmethod) {
             case GET_METHOD:            res = performGetMethod(); break ;
             case POST_METHOD:           res = performPostMethod(); break ;
             case DELETE_METHOD:         res = performDeleteMethod(); break ;
@@ -43,18 +43,18 @@ int Client::performRequest() {
     return res;
 }
 
-off_t Client::getContentLength(std::string const& filename) const {
+off_t Client::getContentLength(std::string const& filename) {
     struct stat statbuf;
 
     std::cout << "\t>>> FILENAME IN GETCONTENTLENGTH() = " << filename << '$' << std::endl;
-    if (/*http_method == GET_METHOD && */stat(filename.c_str(), &statbuf) == 0) {
+    if (/*_httpmethod == GET_METHOD && */stat(filename.c_str(), &statbuf) == 0) {
         return statbuf.st_size;
     } else {
         return -1;
     }
 }
 
-// depends on request_uri being set
+// depends on _requesturi being set
 void Client::writeInitialPortion() {
     std::ostringstream oss;
     static const std::string conn = "Connection";
@@ -63,17 +63,19 @@ void Client::writeInitialPortion() {
     //oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
     if (Client::http_method == 1 || p_state == ERROR)
         oss << "Content-Length: " << getContentLength(request_uri) << "\r\n";
+    else
+        oss << "Content-Length: 0\r\n";
     oss << conn << ": ";
-    if (headers.count(conn)) {
-        oss << headers[conn];
-        //std::cout << "1-Connection: " << headers[conn];
+    if (_headers.count(conn)) {
+        oss << _headers[conn];
+        //std::cout << "1-Connection: " << _headers[conn];
     } else {
-        oss << (headers[conn] = "close");
+        oss << (_headers[conn] = "close");
     }
     oss << "\r\n\r\n";
-    filebuf = oss.str();
-    send_it = filebuf.begin();
-    send_ite = filebuf.end();
+    _filebuf = oss.str();
+    _send_it = _filebuf.begin();
+    _send_ite = _filebuf.end();
 }
 
 std::pair<std::string, std::string> Client::filterRequestUri() {
@@ -82,45 +84,45 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
     std::pair<std::string, std::string> reqInfo;
     std::vector<std::string>::const_iterator it, ite;
 
-    pos = request_uri.find('?'); // get PATH_INFO
+    pos = _requesturi.find('?'); // get PATH_INFO
     if (pos != std::string::npos) {
-        reqInfo.first = request_uri.substr(pos + 1);
-        request_uri.erase(pos);
-        //request_uri[pos] = '\0';
+        reqInfo.first = _requesturi.substr(pos + 1);
+        _requesturi.erase(pos);
+        //_requesturi[pos] = '\0';
     }
-    if (stat(request_uri.c_str(), &statbuf) == 0 && (statbuf.st_mode & S_IFMT) == S_IFDIR) {
-        if (route && route->dir_list) { // this should be to create html output of current directory
+    if (stat(_requesturi.c_str(), &statbuf) == 0 && (statbuf.st_mode & S_IFMT) == S_IFDIR) {
+        if (_route && _route->dir_list) { // this should be to create html output of current directory
             ;
-        } else if (route && !route->dfl_file.empty()) {
-            if (*request_uri.rbegin() != '/') {
-                request_uri.push_back('/');
+        } else if (_route && !_route->dfl_file.empty()) {
+            if (*_requesturi.rbegin() != '/') {
+                _requesturi.push_back('/');
             }
-            pos = request_uri.find('\0');
+            pos = _requesturi.find('\0');
             if (pos == std::string::npos) {
-                request_uri.append(route->dfl_file);
+                _requesturi.append(_route->dfl_file);
             } else {
-                request_uri.insert(pos, route->dfl_file);
+                _requesturi.insert(pos, _route->dfl_file);
             }
         }
     }
-//    if (route && !route->prefix_str.empty()) {
-//        pos1 = request_uri.find(route->prefix_str);
+//    if (_route && !_route->prefix_str.empty()) {
+//        pos1 = _requesturi.find(_route->prefix_str);
 //        if (pos1 != std::string::npos) {
-//            request_uri.replace(0, pos1, route->root);
+//            _requesturi.replace(0, pos1, _route->root);
 //        }
 //    }
-    if (route && !route->cgi_extensions.empty()) {
-        ite = route->cgi_extensions.end();
-        for (std::vector<std::string>::const_iterator it = route->cgi_extensions.begin(); it != ite; ++it) {
-            if (!it->empty() && (pos = request_uri.find(*it)) != std::string::npos) { // is cgi or not
+    if (_route && !_route->cgi_extensions.empty()) {
+        ite = _route->cgi_extensions.end();
+        for (std::vector<std::string>::const_iterator it = _route->cgi_extensions.begin(); it != ite; ++it) {
+            if (!it->empty() && (pos = _requesturi.find(*it)) != std::string::npos) { // is cgi or not
                 pos += it->length();
-                if (pos < request_uri.length()) {
-                    reqInfo.second = request_uri.substr(pos + 1); // get QUERY_STRING
+                if (pos < _requesturi.length()) {
+                    reqInfo.second = _requesturi.substr(pos + 1); // get QUERY_STRING
                 }
                 if (reqInfo.second.empty()) {
                     reqInfo.second = "/";
                 } else {
-                    request_uri.erase(pos);
+                    _requesturi.erase(pos);
                 }
                 break ;
             }
@@ -132,38 +134,38 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
 int Client::performGetMethod() {
     std::string dirlist;
 
-    if (route && route->dir_list && Server::isDirectory(request_uri)) {
-        dirlist = Server::createDirListHtml(request_uri);
+    if (_route && _route->dir_list && Server::isDirectory(_requesturi)) {
+        dirlist = Server::createDirListHtml(_requesturi);
         std::cout << "\t===== DIRLIST =====" << std::endl;
         //std::cout << dirlist << std::endl;
         //throw std::exception();
         if (dirlist.empty()) {
             setErrorState(404);
         } else {
-            filebuf = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
+            _filebuf = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
                 + str_convert(dirlist.length()) + "\r\n\r\n" + dirlist;
         }
-        std::cout << filebuf << std::endl;
-    } else if (!writeToFilebuf(request_uri)) {
+        std::cout << _filebuf << std::endl;
+    } else if (!writeToFilebuf(_requesturi)) {
         return -1;
     }
-//    std::cout << "filebuf.length(): " << filebuf.length() << '\n';
-//    std::cout << "filebuf:\n" << filebuf << '\n';
-    send_it = filebuf.begin();
-    send_ite = filebuf.end();
+//    std::cout << "_filebuf.length(): " << _filebuf.length() << '\n';
+//    std::cout << "_filebuf:\n" << _filebuf << '\n';
+    _send_it = _filebuf.begin();
+    _send_ite = _filebuf.end();
     return 0;
 }
 
-// Potential wastage here, as data is transferred from recvbuf to msgbody to outfile
+// Potential wastage here, as data is transferred from _recvbuf to msgbody to outfile
 // int Client::performPostMethod() {
-//     std::ofstream outfile(request_uri.c_str(), std::ios_base::out | std::ios_base::binary);
+//     std::ofstream outfile(_requesturi.c_str(), std::ios_base::out | std::ios_base::binary);
 
 //     if (!outfile.is_open()) {
-//         perror(request_uri.c_str());
+//         perror(_requesturi.c_str());
 //         setErrorState(4);
 //         return -1;
 //     }
-//     std::copy(msg_body.begin(), msg_body.end(), std::ostreambuf_iterator<char>(outfile));
+//     std::copy(_msgbody.begin(), _msgbody.end(), std::ostreambuf_iterator<char>(outfile));
 //     return 0;
 // }
 
@@ -177,8 +179,8 @@ int Client::performPostMethod() {
     }
     
     try {
-        if (!msg_body.empty()) {
-            outfile.write(&msg_body[0], msg_body.size());
+        if (!_msgbody.empty()) {
+            outfile.write(&_msgbody[0], _msgbody.size());
         }
         if (!outfile) {
             std::cerr << "Error writing to file: " << request_uri << '\n';
@@ -197,7 +199,7 @@ int Client::performPostMethod() {
 int Client::performDeleteMethod() {
     const char *filename;
 
-    filename = request_uri.c_str();
+    filename = _requesturi.c_str();
     if (access(filename, F_OK) == -1) {
         perror(filename);
         setErrorState(404);
@@ -226,6 +228,6 @@ int Client::writeToFilebuf(std::string const& filename) {
     if (!infile.is_open()) {
         return setErrorState(403), 0;
     }
-    std::copy((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>(), std::back_inserter(filebuf));
+    std::copy((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>(), std::back_inserter(_filebuf));
     return 1;
 }

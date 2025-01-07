@@ -54,25 +54,25 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
     //exit(1);
 }
 
-std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
+std::ostream& operator<<(std::ostream& os, RouteInfo const& _route) {
 
     os << std::setw(20) << "===RouteInfo===\n";
     os << std::setw(20) << "dir_list: " << std::boolalpha << route.dir_list << '\n';
     os << std::setw(20) << "http_methods number val: " << route.http_methods << '\n';
     os << std::setw(20) << "http_methods: ";
-    if (route.http_methods & GET_METHOD)
+    if (_route.http_methods & GET_METHOD)
         os << "GET, ";
-    if (route.http_methods & POST_METHOD)
+    if (_route.http_methods & POST_METHOD)
         os << "POST, ";
-    if (route.http_methods & DELETE_METHOD)
+    if (_route.http_methods & DELETE_METHOD)
         os << "DELETE";
     os.put('\n');
-    os << std::setw(20) << "root: " << route.root << '\n';
-    os << std::setw(20) << "dfl_file: " << route.dfl_file << '\n';
-    os << std::setw(20) << "upload_dir: " << route.upload_dir << '\n';
-    os << std::setw(20) << "prefix_str: " << route.prefix_str << '\n';
+    os << std::setw(20) << "root: " << _route.root << '\n';
+    os << std::setw(20) << "dfl_file: " << _route.dfl_file << '\n';
+    os << std::setw(20) << "upload_dir: " << _route.upload_dir << '\n';
+    os << std::setw(20) << "prefix_str: " << _route.prefix_str << '\n';
     os << std::setw(20) << "cgi_extensions: ";
-    std::copy(route.cgi_extensions.begin(), route.cgi_extensions.end(), std::ostream_iterator<std::string>(os, ", "));
+    std::copy(_route.cgi_extensions.begin(), _route.cgi_extensions.end(), std::ostream_iterator<std::string>(os, ", "));
     return os << '\n';
 }
 

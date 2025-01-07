@@ -3,31 +3,29 @@
 void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
     int pipefds[2];
 
-    if (socketpair(AF_LOCAL, SOCK_STREAM, 0, pipefds) == -1) {
+    if (socketpair(AF_LOCAL, SOCK_STREAM/*| SOCK_CLOEXEC*/, 0, pipefds) == -1) {
         handle_error("socketpair");
     }
-    std::cout << "\tCHANGING DIR TO " << route->root << " IN CHILD PROCESS" << std::endl;
     switch (fork()) {
         case -1:        handle_error("fork");
-        case 0:         if (route && chdir(route->root.c_str()) == -1) {
+        case 0:         if (_route && chdir(_route->root.c_str()) == -1) {
                             handle_error("chdir");
                         }
                         close(pipefds[0]);
                         executeCgi(pipefds[1], reqInfo);
                         throw std::exception(); // force stack unwinding of child process if execve failed
         default:        close(pipefds[1]);
-                        registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
+                        Client::registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
     }
-    std::swap(active_fd, passive_fd = pipefds[0]);
-    std::cout << "after forking, active_fd: " << active_fd << ", passive_fd: " << passive_fd << std::endl;
-    if (http_method == POST_METHOD) {
-        send_it = msg_body.begin();
-        send_ite = msg_body.end();
-        setIOState(SEND_CGI);
+    if (_httpmethod == POST_METHOD) {
+        std::cout << "cgi object created (SEND_CGI)" << std::endl;
+        _cgis.push_back(CGI(SEND_CGI, pipefds[0], _clientfd));
+        _cgis.back().setCgiInput(_msgbody);
     } else {
-        msg_body.clear();
-        setIOState(RECV_CGI);
+        std::cout << "cgi object created (RECV_CGI)" << std::endl;
+        _cgis.push_back(CGI(RECV_CGI, pipefds[0], _clientfd));
     }
+    setIOState(RECV_HTTP);
 }
 
 std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const& reqInfo) const {
@@ -43,18 +41,18 @@ std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const
     }
     envp.push_back(strdup(std::string("PATH_INFO=").append(reqInfo.first).c_str()));
     envp.push_back(strdup(std::string("QUERY_STRING=").append(reqInfo.second).c_str()));
-    if (route) {
-        envp.push_back(strdup(std::string("UPLOAD_DIR=").append(route->upload_dir).c_str()));
+    if (_route) {
+        envp.push_back(strdup(std::string("UPLOAD_DIR=").append(_route->upload_dir).c_str()));
     }
-    switch (http_method) {
+    switch (_httpmethod) {
         case GET_METHOD:        envp.push_back(strdup("REQUEST_METHOD=GET")); break ;
         case POST_METHOD:       envp.push_back(strdup("REQUEST_METHOD=POST")); break ;
         case DELETE_METHOD:     envp.push_back(strdup("REQUEST_METHOD=DELETE")); break ;
         default:                std::terminate();
     }
     flag = false;
-    c_ite = headers.end();
-    for (std::map<std::string, std::string>::const_iterator c_it = headers.begin(); c_it != c_ite; ++c_it) {
+    c_ite = _headers.end();
+    for (std::map<std::string, std::string>::const_iterator c_it = _headers.begin(); c_it != c_ite; ++c_it) {
         temp.clear();
         temp.reserve(c_it->first.length() + c_it->second.length() + 1);
         std::transform(c_it->first.begin(), c_it->first.end(), std::back_inserter(temp), &toupper);
@@ -65,8 +63,8 @@ std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const
         if (!flag && c_it->first == "Content-Length") {
             // putting Content-Length header value doesnt seem to matter for Python CGI module handling File Uploads
             // seems that setting a bunch of env vars for the cgi process fixed issue (maybe "Content-Type" header?)
-            if (http_method == POST_METHOD) {
-                envp.push_back(strdup((temp += str_convert(msg_body.size())).c_str()));
+            if (_httpmethod == POST_METHOD) {
+                envp.push_back(strdup((temp += str_convert(_msgbody.size())).c_str()));
             } else {
                 envp.push_back(strdup((temp += "0").c_str()));
             }
@@ -90,7 +88,7 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
     if (close(pipefd) == -1) {
         handle_error("close");
     }
-    argv[0] = strdup(request_uri.c_str());
+    argv[0] = strdup(_requesturi.c_str());
     argv[1] = strdup(reqInfo.second.c_str());
     envp = initCgiEnv(reqInfo);
     std::cerr << "before) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
@@ -114,10 +112,10 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
 void Client::registerEvent(int fd, uint32_t events) {
     struct epoll_event ev;
 
-    (void)events;
+    //(void)events;
     memset(&ev, 0, sizeof(ev));
     ev.data.fd = fd;
-    ev.events = EPOLLIN | EPOLLOUT;
+    ev.events = events;//EPOLLIN | EPOLLOUT;
     if (epoll_ctl(Client::epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         handle_error("RE: epoll_ctl");
     }

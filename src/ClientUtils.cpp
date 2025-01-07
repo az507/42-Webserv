@@ -17,36 +17,29 @@ void Client::setEnvp(const char **envp) {
 }
 
 void Client::closeFds() {
-
-    //throw std::exception();
-    if (active_fd > 0) {
-        close(active_fd);
+    if (_clientfd != -1) {
+        Client::deleteEvent(_clientfd);
+        close(_clientfd);
+        _clientfd = -1;
     }
-    if (passive_fd > 0) {
-        close(passive_fd);
-    }
-    active_fd = passive_fd = -1;
+    std::for_each(_cgis.begin(), _cgis.end(), std::mem_fun_ref(&CGI::cleanup));
+    _cgis.clear();
+    _currptr = _cgis.end();
 }
 
 bool Client::isConnClosed() const {
 //    time_t diff;
 //
-//    diff = difftime(time(NULL), client_conn_time);
+//    diff = difftime(time(NULL), _lastresponsetime);
 //    std::cout << "diff in time: " << diff << std::endl;
-//    std::cout << "\t>>> io_state = " << io_state << std::endl;
-    //return false;
-    return (io_state == CONN_CLOSED) || (difftime(time(NULL), client_conn_time) > TIMEOUT_VAL);
-        //&& io_state != RECV_CGI && io_state != SEND_CGI));
-}
-
-void Client::setActiveFd(int fd) {
-
-    active_fd = fd;
-}
-
-std::pair<int, int> Client::getAllFds() const {
-    
-    return std::make_pair(active_fd, passive_fd);
+//    std::cout << "\t>>> _iostate = " << _iostate << std::endl;
+//    return false;
+//    bool io_cond = _iostate == CONN_CLOSED;
+//    bool tm_cond = difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL;
+//    std::cout << std::boolalpha << "io_cond: " << io_cond << ", tm_cond: " << tm_cond << std::endl;
+//    return io_cond || tm_cond;
+    return (_iostate == CONN_CLOSED) || (difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL);
+        //&& _iostate != RECV_CGI && _iostate != SEND_CGI));
 }
 
 // private
@@ -75,10 +68,10 @@ std::map<int, std::string> Client::initHttpStatuses() {
 
 void Client::setIOState(int state) {
 
-    this->io_state = state;
+    this->_iostate = state;
 }
 
 void Client::setPState(int state) {
 
-    this->p_state = state;
+    this->_pstate = state;
 }

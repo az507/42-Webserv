@@ -3,6 +3,8 @@
 
 # include "ConfigFile.hpp"
 # include "Server.hpp"
+# include "Cgi.hpp"
+# include <list>
 # include <sys/types.h>
 # include <sys/wait.h>
 # include <sys/stat.h>
@@ -13,7 +15,7 @@
 # include <limits.h>
 
 # define BUFSIZE 1024
-# define TIMEOUT_VAL 5.0
+# define TIMEOUT_VAL 100.0
 # define handle_error(err) \
     do { std::cout << err << ": " << strerror(errno) << '\n'; exit(EXIT_FAILURE); } while (0);
 
@@ -36,37 +38,10 @@ std::string str_convert(T const& value) {
     return oss.str();
 }
 
+class CGI;
+
 class Client {
     public:
-        //Client();
-        ~Client();
-        //Client(Client const&);
-        Client& operator=(Client const&);
-        Client(int, std::vector<ServerInfo> const&);
-
-        void socketRecv(); // could either be from client or cgi
-        void socketSend();
-
-        void closeFds();
-        void setActiveFd(int);
-        bool isConnClosed() const;
-        bool operator!=(int) const;
-        bool operator==(int) const;
-        std::pair<int, int> getAllFds() const;
-        static int getEpollfd();
-        static void setEpollfd(int);
-        static void setEnvp(const char **);
-
-        friend std::ostream& operator<<(std::ostream&, Client const&);
-
-    private:
-        static std::map<int, std::string> initHttpStatuses();
-        static std::map<std::string, std::string> initContentTypes();
-
-        std::string getHttpStatus(int) const;
-        off_t getContentLength(std::string const&) const;
-        std::string getContentType(std::string const&) const;
-
         enum IOState {
             RECV_HTTP = 0,
             SEND_HTTP,
@@ -83,6 +58,38 @@ class Client {
             FINISHED,
         };
 
+        //Client();
+        ~Client();
+        //Client(Client const&);
+        Client& operator=(Client const&);
+        Client(int, int, std::vector<ServerInfo> const&);
+
+        void socketRecv(); // could either be from client or cgi
+        void socketSend();
+
+        void closeFds();
+        bool operator!=(int);
+        bool operator==(int);
+        bool isConnClosed() const;
+        static int getEpollfd();
+        static void setEpollfd(int);
+        static void setEnvp(const char **);
+
+        static std::string getHttpStatus(int);
+        static off_t getContentLength(std::string const&);
+        static std::string getContentType(std::string const&);
+
+        static void deleteEvent(int);
+        static void registerEvent(int, uint32_t);
+
+        friend std::ostream& operator<<(std::ostream&, Client const&);
+
+    private:
+        void printFds() const;
+
+        static std::map<int, std::string> initHttpStatuses();
+        static std::map<std::string, std::string> initContentTypes();
+
         static int epollfd;
         static const char **envp;
 
@@ -97,7 +104,6 @@ class Client {
         void resetSelf();
 
         void advanceSendIterators(size_t);
-        void deleteEvent(int);
 
         void parseHttpRequest(const char *, size_t);
         RouteInfo const* findRouteInfo() const;
@@ -116,40 +122,41 @@ class Client {
         int performDeleteMethod();
         int writeToFilebuf(std::string const&);
 
-        void parseCgiOutput(const char *, size_t);
-        int ignoreStartLine();
-        int parseCgiHeaders(size_t&);
+//        void parseCgiOutput(const char *, size_t);
+//        int ignoreStartLine();
+//        int parseCgiHeaders(size_t&);
 
         void runCgiScript(std::pair<std::string, std::string> const&);
         std::vector<char *> initCgiEnv(std::pair<std::string, std::string> const&) const;
         void executeCgi(int, std::pair<std::string, std::string> const&);
-        void registerEvent(int, uint32_t);
 
-        int p_state; // at which stage of parsing this object is currently in
-        int io_state; // should object be receiving/sending data at the moment
-        int http_code;
-        int http_method;
-        int active_fd; // will be recv/send from this fd
-        int passive_fd;
+        int _pstate; // at which stage of parsing this object is currently in
+        int _iostate; // should object be receiving/sending data at the moment
+        int _httpcode;
+        int _httpmethod;
+        int _clientfd;
 
-        time_t client_conn_time;
+        time_t _lastresponsetime;
 
-        bool unchunk_flag;
-        bool track_length;
-        size_t bytes_left;
+        bool _unchunkflag;
+        bool _tracklength;
+        size_t _bytesleft;
 
-        std::string recvbuf;
-        std::string filebuf;
-        std::string msg_body;
-        std::string request_uri;
+        std::string _recvbuf;
+        std::string _filebuf;
+        std::string _msgbody;
+        std::string _requesturi;
 
-        RouteInfo const* route;
-        ServerInfo const& server;
+        RouteInfo const* _route;
+        ServerInfo const& _server;
 
-        std::string::const_iterator send_it;
-        std::string::const_iterator send_ite;
+        std::string::const_iterator _send_it;
+        std::string::const_iterator _send_ite;
 
-        std::map<std::string, std::string> headers;
+        std::list<CGI> _cgis;
+        std::list<CGI>::iterator _currptr;
+
+        std::map<std::string, std::string> _headers;
 };
 
 #endif

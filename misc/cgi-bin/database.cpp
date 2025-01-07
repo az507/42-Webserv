@@ -82,17 +82,17 @@ void getRequestedFile(const char *filename) {
 }
 
 int main(int argc, char *argv[]) {
-    char *http_method;
+    char *_httpmethod;
 
     //try {
         assert(argc >= 2);
         assert(argv[1] != NULL);
-        http_method = std::getenv("REQUEST_METHOD");
-        assert(http_method != NULL);
+        _httpmethod = std::getenv("REQUEST_METHOD");
+        assert(_httpmethod != NULL);
         //assert(false);
-        if (!strcmp(http_method, "GET")) {
+        if (!strcmp(_httpmethod, "GET")) {
             getRequestedFile(argv[1]);
-        } else if (!strcmp(http_method, "POST")) {
+        } else if (!strcmp(_httpmethod, "POST")) {
             handleFileUpload();
         }
 //    }

@@ -35,12 +35,12 @@
 //         return EXIT_FAILURE;
 //     }
 
-//     // Print server start message
-//     std::cout << "Starting server on port " << port << "..." << std::endl;
+//     // Print _server start message
+//     std::cout << "Starting _server on port " << port << "..." << std::endl;
 
 //     try {
-//         Server server(port); // Initialize server
-//         server.run();        // Start handling connections
+//         Server _server(port); // Initialize _server
+//         _server.run();        // Start handling connections
 //     } catch (const std::exception& e) {
 //         std::cerr << "Error: " << e.what() << std::endl;
 //         return EXIT_FAILURE;
@@ -56,10 +56,10 @@
 #include <string>
 
 // int main() {
-//     // Define server configurations as a vector of <IP, Port>
-//     std::vector<std::pair<std::string, std::string> > servers;
-//     servers.push_back(std::make_pair("", "8080"));       // All interfaces on port 8080
-//     servers.push_back(std::make_pair("127.0.0.1", "9090")); // Localhost on port 9090
+//     // Define _server configurations as a vector of <IP, Port>
+//     std::vector<std::pair<std::string, std::string> > _servers;
+//     _servers.push_back(std::make_pair("", "8080"));       // All interfaces on port 8080
+//     _servers.push_back(std::make_pair("127.0.0.1", "9090")); // Localhost on port 9090
 
 //     // Define the root directory for serving files
 //     std::string rootdir = "/var/www"; // Change this to the directory you want to serve
@@ -68,11 +68,11 @@
 //     errorpage.insert(std::make_pair(500, "/errors/500.html"));
 //     try 
 //     {
-//         // Initialize the server with configurations and root directory
-//         Server server(servers, rootdir);
+//         // Initialize the _server with configurations and root directory
+//         Server _server(_servers, rootdir);
 
-//         // Start the server
-//         server.run();
+//         // Start the _server
+//         _server.run();
 //     } catch (const std::exception& e) {
 //         std::cerr << "Error: " << e.what() << std::endl;
 //         return EXIT_FAILURE;
@@ -86,18 +86,18 @@
 #include <iostream>
 
 int main() {
-    // Define server info (IP and Port)
-    std::vector<std::pair<std::string, std::string> > serverinfo;
-    serverinfo.push_back(std::make_pair("", "8080")); // Listen on all interfaces, port 8080
-    serverinfo.push_back(std::make_pair("127.0.0.1", "9090")); // Listen on localhost, port 9090
+    // Define _server info (IP and Port)
+    std::vector<std::pair<std::string, std::string> > _serverinfo;
+    _serverinfo.push_back(std::make_pair("", "8080")); // Listen on all interfaces, port 8080
+    _serverinfo.push_back(std::make_pair("127.0.0.1", "9090")); // Listen on localhost, port 9090
 
     // Root directory for files
     std::string rootdir = "/home/xzhang/Documents/webserv/webserv/webserv/src/w";
 
     try {
-        // Initialize and run the server
-        Server server(serverinfo, rootdir);
-        server.run();
+        // Initialize and run the _server
+        Server _server(_serverinfo, rootdir);
+        _server.run();
     } catch (const std::exception& e) {
         std::cerr << "Server error: " << e.what() << std::endl;
         return 1;
