@@ -105,3 +105,11 @@ int main() {
 
     return 0;
 }
+
+
+/* tste cmd for the unchunking part 
+curl -X POST -H "Transfer-Encoding: chunked" --data-binary @- http://127.0.0.1:8080/cgi-bin/x.txt <<EOF
+hello
+worldxxxxx
+EOF
+*/

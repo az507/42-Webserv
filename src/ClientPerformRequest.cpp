@@ -30,8 +30,12 @@ int Client::performRequest() {
             default:                    std::terminate();
         }
         setIOState(SEND_HTTP);
-    } else {
+    } else if (access(request_uri.c_str(), F_OK | X_OK) == 0) {
         runCgiScript(reqInfo);
+    }
+    else {
+        setErrorState(404);
+        return(0);
     }
     if (p_state != ERROR) {
         setPState(START_LINE); // reset state keep alive
@@ -57,7 +61,7 @@ void Client::writeInitialPortion() {
 
     oss << "HTTP/1.1 " << http_code << ' ' << getHttpStatus(http_code) << "\r\n";
     //oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
-    if (Client::unchunk_flag == false)
+    if (Client::http_method == 1 || p_state == ERROR)
         oss << "Content-Length: " << getContentLength(request_uri) << "\r\n";
     oss << conn << ": ";
     if (headers.count(conn)) {

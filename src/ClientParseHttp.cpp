@@ -87,6 +87,19 @@ int Client::parseStartLine() {
         if (!(http_method & route->http_methods)) {
             setErrorState(405); // Method not allowed
         }
+        std::vector<std::string>::const_iterator it;
+        for (it = route->cgi_extensions.begin(); it != route->cgi_extensions.end(); ++it)
+        {
+            if (request_uri.find(*it) != std::string::npos)
+            {
+                if (access(request_uri.c_str(), X_OK | F_OK) == -1)
+                    return setErrorState(404), -1;
+                break ;
+            }
+        }
+        if (it == route->cgi_extensions.end() && access(request_uri.c_str(), F_OK | R_OK) == -1) {
+            return setErrorState(404), -1;
+        }
         // Directory where file should be searched from
         // PATH_INFO could be in uri, eg /infile in .../script.cgi/infile
         this->http_method = http_method;
