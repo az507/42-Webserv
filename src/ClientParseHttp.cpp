@@ -96,18 +96,21 @@ int Client::parseStartLine() {
         } else {
             _requesturi.replace(0, _route->prefix_str.length(), _route->root);
         }
+        std::cout << "\t_requesturi: " << _requesturi << std::endl;
         std::vector<std::string>::const_iterator it;
-        for (it = _route->cgi_extensions.begin(); it != _route->cgi_extensions.end(); ++it)
-        {
-            if (_requesturi.find(*it) != std::string::npos)
+        if (!Server::isDirectory(_requesturi)) {
+            for (it = _route->cgi_extensions.begin(); it != _route->cgi_extensions.end(); ++it)
             {
-                if (access(_requesturi.c_str(), X_OK | F_OK) == -1)
-                    return setErrorState(404), -1;
-                break ;
+                if (_requesturi.find(*it) != std::string::npos)
+                {
+                    if (access(_requesturi.c_str(), X_OK | F_OK) == -1)
+                        return setErrorState(404), -1;
+                    break ;
+                }
             }
-        }
-        if (it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1) {
-            return setErrorState(404), -1;
+            if (it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1) {
+                return setErrorState(404), -1;
+            }
         }
         // Directory where file should be searched from
         // PATH_INFO could be in uri, eg /infile in .../script.cgi/infile

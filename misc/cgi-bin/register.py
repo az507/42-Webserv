@@ -26,7 +26,7 @@ if os.path.exists(user_data_file):
             stored_username, _ = user.strip().split(",")
             if username == stored_username:
                 print(f"<h1>Registration failed!</h1>")
-                print(f"<p>Username '{username}' is already taken. <a href='/register.html'>Try again</a>.</p>")
+                print(f"<p>Username '{username}' is already taken. <a href='html/register.html'>Try again</a>.</p>")
                 exit()
 
 # Register the new user
@@ -34,4 +34,4 @@ with open(user_data_file, "a") as f:
     f.write(f"{username},{password}\n")
 
 print("<h1>Registration successful!</h1>")
-print("<p>You can now <a href='/misc/cgi-bin/login.py'>login</a>.</p>")
+print("<p>You can now <a href='../cgi-bin/login.py'>login</a>.</p>")

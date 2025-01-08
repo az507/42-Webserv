@@ -254,8 +254,8 @@ int main(int argc, char *argv[], char *envp[]) {
         c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isConnClosed));
         if (c_it != clients.end()) {
 //            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
-//            std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
-//            clients.erase(c_it, clients.end());
+            std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
+            clients.erase(c_it, clients.end());
 //            std::cout << "size of clients after: " << clients.size() << std::endl;
         }
         //clients.splice(clients.end(), temp, temp.begin(), temp.end());

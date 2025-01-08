@@ -140,7 +140,8 @@ void Client::socketSend() {
                                }
                             }
         }
-    } else if (!_cgis.empty() && _currptr != _cgis.end() && _currptr->getIOState() == SEND_HTTP) {
+    } else if (!_cgis.empty() && _currptr != _cgis.end()
+        && (_currptr->getIOState() == SEND_HTTP || _currptr->getIOState() == SEND_CGI)) {
         if (!_currptr->socketSend()) {
             _cgis.erase(_currptr);
             _currptr = _cgis.end();
