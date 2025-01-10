@@ -177,7 +177,7 @@ int main(int argc, char *argv[], char *envp[]) {
     socklen_t addrlen;
     struct sockaddr addr;
     int nfds, sockfd, max_connfd;
-    std::list<Client> clients;//, temp;
+    std::list<Client> clients, temp;
     std::list<Client>::iterator c_it;
     //struct epoll_event ev;//, events[MAXEVENTS];
     std::vector<struct epoll_event> events(MAXEVENTS);
@@ -247,7 +247,7 @@ int main(int argc, char *argv[], char *envp[]) {
 //                }
 //                if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER
                 Client::registerEvent(sockfd, EPOLLIN | EPOLLOUT);
-                clients.push_back(Client(events[i].data.fd, sockfd, _servers));
+                temp.push_back(Client(events[i].data.fd, sockfd, _servers));
             }
         }
         // can also put timeout condition in isConnClosed() func so can remove all dead or inactive connections in 1 call
@@ -261,6 +261,7 @@ int main(int argc, char *argv[], char *envp[]) {
         //clients.splice(clients.end(), temp, temp.begin(), temp.end());
         //memset(events.data(), 0, sizeof(struct epoll_event) * events.size());
         std::fill(events.begin(), events.end(), (struct epoll_event){});
+        temp.splice(clients.end(), temp, temp.begin(), temp.end());
         // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
         // clients.erase(c_it, clients.end());
     }
