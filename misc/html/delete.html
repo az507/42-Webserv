@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete File</title>
+    <script>
+        // Function to populate the file list
+async function loadFileList() {
+    try {
+        const response = await fetch("/cgi-bin/tmp_list.py");
+        
+        // Log status and headers for debugging
+        console.log("Response status:", response.status);
+        console.log("Response headers:", response.headers);
+
+        if (!response.ok) throw new Error("Failed to fetch file list.");
+        
+        // Use .json() directly to parse the response as JSON
+        const fileList = await response.json();
+        response.json().then(data => console.log(data)); // Log the parsed JSON data for debugging
+        console.log("Parsed file list:", fileList); // Log the parsed file list for debugging
+
+        if (Array.isArray(fileList)) {
+            const fileSelect = document.getElementById("fileSelect");
+            fileSelect.innerHTML = ""; // Clear previous options
+            fileList.forEach(file => {
+                const option = document.createElement("option");
+                option.value = file;
+                option.textContent = file;
+                fileSelect.appendChild(option);
+            });
+        } else {
+            throw new Error("Invalid file list format.");
+        }
+    } catch (error) {
+        console.error("Error loading file list:", error);
+        document.getElementById("error").textContent = "Failed to load file list.";
+    }
+}
+
+
+        // Function to send DELETE request
+        async function deleteFile() {
+            const fileSelect = document.getElementById("fileSelect");
+            const selectedFile = fileSelect.value;
+            if (!selectedFile) {
+                alert("Please select a file to delete.");
+                return;
+            }
+            try {
+                const response = await fetch(`/cgi-bin/tmp/${selectedFile}`, {
+                    method: "DELETE",
+                });
+                if (response.ok) {
+                    alert("File deleted successfully.");
+                    loadFileList(); // Reload the file list
+                } else {
+                    alert("Failed to delete the file.");
+                }
+            } catch (error) {
+                console.error("Error deleting file:", error); // Fixed missing console.error
+            }
+        }
+
+        // Load file list on page load
+        window.onload = loadFileList;
+    </script>
+</head>
+<body>
+    <h1>Delete a File</h1>
+    <p>Select a file to delete from the `/misc/cgi-bin/tmp` directory:</p>
+    <div>
+        <select id="fileSelect">
+            <option value="">-- Loading files... --</option>
+        </select>
+        <button onclick="deleteFile()">Delete</button>
+    </div>
+    <p id="error" style="color: red;"></p> <!-- Added an error element -->
+</body>
+</html>

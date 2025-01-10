@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A HTML Page</title>
+    <style>
+        /* Set the GIF as the background */
+        body /* Select the body element */{
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack children vertically */
+            align-items: center; /* Center children horizontally */
+            height: 100vh; /* Set the height to 100% of the viewport height */
+            margin: 0; /* Remove default margin */
+            font-family: Arial, sans-serif; /* Use Arial font */
+            background-image: url('/resources/cat-space.gif'); /* Set the GIF as the background */
+            background-size: cover; /* Make sure the GIF covers the entire page */
+            background-position: center center; /* Center the GIF */
+            background-attachment: fixed; /* Keeps the background fixed while scrolling */
+            color: white; /* Ensure the text is visible against the GIF */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6); /* Add text shadow for readability */
+        }
+
+        pre {
+            text-align: center;
+            font-family: monospace;
+            margin: 0; /* Remove margin to prevent extra space */
+            padding-top: 20px; /* Add some padding at the top */
+        }
+
+        h1 {
+            color: #fff; /* White text for header */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6); /* Add text shadow for readability */
+        }
+
+        img {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 10px 0;
+        }
+
+        /* Style for the horizontal links */
+        a {
+            display: inline-block; /* Keep the links inline */
+            margin: 10px; /* Space between links */
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: bold;
+            color: black; /* Set link color to black */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* Add text shadow for better readability */
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Position links at the top and evenly distribute them */
+        .links {
+            position: fixed; /* Fix the links at the top */
+            top: 0; /* Stick to the top of the page */
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around; /* Evenly distribute links */
+            padding: 10px 0; /* Add some padding to the top/bottom */
+            background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background */
+            z-index: 10; /* Ensure the links stay on top of other content */
+        }
+
+        form {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background for form */
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        label, input {
+            font-size: 16px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            margin-top: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        input[type="submit"] {
+            padding: 10px 15px;
+            margin-top: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Links container -->
+    <div class="links">
+        <a href="/html/login.html">login</a>
+        <a href="/html/index1.html">index1</a>
+        <a href="/resources/en.subject.pdf">en.subject</a>
+        <a href="/resources/nginx.svg">nginx</a>
+        <a href="/resources/server.png">server</a>
+        <a href="/html/delete.html"> delete</a>
+        <a href="/html/cookie.html">cookie</a>
+        <a href="/html/homepage.html">homepage</a>
+    </div>
+
+    <header>
+        <br><br><br><br><br><br>
+        <pre>
+* ····························································· *
+* :██╗----██╗███████╗██████╗-███████╗███████╗██████╗-██╗---██╗: *
+* :██║----██║██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗██║---██║: *
+* :██║-█╗-██║█████╗--██████╔╝███████╗█████╗--██████╔╝██║---██║: *
+* :██║███╗██║██╔══╝--██╔══██╗╚════██║██╔══╝--██╔══██╗╚██╗-██╔╝: *
+* :╚███╔███╔╝███████╗██████╔╝███████║███████╗██║--██║-╚████╔╝-: *
+* :-╚══╝╚══╝-╚══════╝╚═════╝-╚══════╝╚══════╝╚═╝--╚═╝--╚═══╝--: *
+* ····························································· *
+        </pre>
+    </header>
+
+    <section>
+        <h1>Welcome to home Page</h1>
+
+    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+        <!-- Form for user input -->
+        <!--<form action="misc/cgi-bin/dirlist.cgi/~" method="get">
+            <label for="fname">First name:</label>
+            <input type="text" id="fname" name="fname" required><br><br>
+            <input type="submit" value="Submit"> -->
+        </form>
+    </section>
+</body>
+</html>
