@@ -221,6 +221,9 @@ int main(int argc, char *argv[], char *envp[]) {
                 if (*c_it == events[i].data.fd && events[i].events & EPOLLOUT) { // in the middle of socketRecv(), the _activefd can change
                     c_it->socketSend();
                 }
+                // vvvvv DONT UNCOMMENT THIS, IT WILL BREAK CGI COMPLETELY vvvvvv
+                // now, a single Client object can respond to multiple fds because of list<CGI> inside it
+                // c_it SHOULD NOT get plucked out of search area of clients list prematurely
 //                if (!c_it->isConnClosed()) {
 //                    temp.splice(temp.begin(), clients, c_it);
 //                }
