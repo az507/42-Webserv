@@ -1,0 +1,7 @@
+xzhang webserv$ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "key=value" http://127.0.0.1:8080/cgi-bin/form_handler.cgi
+curl: (52) Empty reply from server
+
+xzhang webserv$ curl -X DELETE http://127.0.0.1:8080/cgi-bin/tmp/deletable_file.txt
+curl: (18) transfer closed with 891 bytes remaining to read
+
+

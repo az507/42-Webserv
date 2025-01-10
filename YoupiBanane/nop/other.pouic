@@ -1,0 +1,278 @@
+Skip to main content
+Stack Overflow
+Products
+Search…
+Home
+Questions
+Tags
+Users
+Companies
+Labs
+Jobs
+Discussions
+Collectives
+Communities for your favorite technologies. Explore all Collectives
+
+Teams
+
+Ask questions, find answers and collaborate at work with Stack Overflow for Teams.
+
+ 
+Open all files in a folder
+Asked 14 years, 6 months ago
+Modified 4 years, 3 months ago
+Viewed 32k times
+28
+
+Suppose you'd like to open all the files in your checkout folder under the /trunk subdirectory. Assume the files are called first.c second.r third.cpp. How can you open all the files into vim with a single command.
+
+The obvious answer is the following
+
+$ vim first.c second.r third.cpp
+But can you do this more simply?
+
+vim
+Share
+Improve this question
+Follow
+edited Jan 20, 2012 at 14:55
+user212218
+asked Jun 20, 2010 at 23:31
+Milktrader's user avatar
+Milktrader
+9,7781414 gold badges5353 silver badges6969 bronze badges
+Add a comment
+6 Answers
+Sorted by:
+
+Highest score (default)
+32
+
+To edit all files in the current folder, use:
+
+vim *
+To edit all files in tabs, use:
+
+vim -p *
+To edit all files in horizontally split windows, use:
+
+vim -o *
+Share
+Improve this answer
+Follow
+edited Mar 10, 2016 at 15:12
+Zheng Qu's user avatar
+Zheng Qu
+79977 silver badges2525 bronze badges
+answered May 3, 2015 at 10:30
+linuscl's user avatar
+linuscl
+79377 silver badges2020 bronze badges
+2
+vim -p * did the job for me – 
+Bishisht Bhatta
+ CommentedDec 10, 2016 at 17:57
+2
+For completeness sake: To edit all files in vertically split windows, use vim -O * And to close everything use the classic :qa – 
+Ambareesh
+ CommentedApr 29, 2020 at 17:35 
+Add a comment
+22
+
+Sounds like you're on linux or some Unix variant. Using the asterisk gets you all files in the current folder:
+
+$ vim *
+Share
+Improve this answer
+Follow
+answered Jun 20, 2010 at 23:34
+desau's user avatar
+desau
+3,02122 gold badges2525 silver badges2828 bronze badges
+1
+stackoverflow is truly a wonder in the modern era. Your solution is simple, easy to remember and works. – 
+Milktrader
+ CommentedJun 20, 2010 at 23:37
+6
+@Milktrader, you do realise its a shell thing and not a vim thing, right?. How do you copy all the files in a folder? cp * /some/other/place. How do you delete all the files in a folder? rm * etc. – 
+Jeffrey Jose
+ CommentedJun 21, 2010 at 2:39
+6
+This will not open dot files by default. For all files you need {,.}* (in bash, assuming that exists at least one file that start with a dot) or (|.)* (in zsh, works even if there are no dot files). – 
+ZyX
+ CommentedJun 21, 2010 at 3:57 
+11
+Check out the vim man page for some more info about using command line arguments to vim. I like vim * -p to open in tabs, or vim -O fileA fileB to open a couple of files in a split view. If they are similar I might use vimdiff file{old,new} to open them in a split view with the differences highlighted. – 
+David Winslow
+ CommentedJun 21, 2010 at 4:31
+David - I will check out vim man now that I know that information lies therein, thanks. The extra information you posted is particularly useful. Jeff- I see how you characterize this as a shell question. vim and shell are very closely related so knowing one helps with operating the other. I characterized it as a vim question on the basis of accomplishing a specific task in vim, on which I was stumped. Next time I'll look for answers in shell and vim forums. – 
+Milktrader
+ CommentedJun 21, 2010 at 17:46 
+Show 1 more comment
+11
+
+In addition to the answers given above, I'd like to point out that you can also do that from inside vim itself using
+
+:args * 
+which sets the arglist to be the name of the files in the directory, and then you can display them in tabs with :tab all (or you can use :argdo tabe).
+
+Share
+Improve this answer
+Follow
+answered Sep 15, 2020 at 12:55
+Ash's user avatar
+Ash
+4,71866 gold badges2929 silver badges4242 bronze badges
+Thanks for the answer. Is it possible for the second command to open them all in new tabs as to not replace existing tabs? – 
+Asaf
+ CommentedOct 31, 2022 at 12:11
+Add a comment
+9
+
+The other answers will not work if you have subdirectories. If you need to open all files in all subdirectories you can use command substitution:
+
+vim `find . -type f`
+If you want to ignore files in subdirectories write:
+
+vim `find . -type f -depth 1`
+You can, of course, get as fancy as you want using the find command.
+
+Share
+Improve this answer
+Follow
+answered Jan 19, 2018 at 11:43
+durum's user avatar
+durum
+3,40411 gold badge2626 silver badges3131 bronze badges
+Add a comment
+5
+
+Edit all files using a given pattern:
+
+vim `find . -name "*your*pattern*here*"`
+Super useful when I do this:
+
+vim `find . -name "*.go"`
+Share
+Improve this answer
+Follow
+answered Sep 15, 2018 at 23:02
+superarts.org's user avatar
+superarts.org
+7,21911 gold badge6161 silver badges4545 bronze badges
+Add a comment
+2
+
+durum's answer is incomplete. To open all files in the directory without opening files in subdirectories, use this:
+
+vim `find . -maxdepth 1 -type f`
+Share
+Improve this answer
+Follow
+answered Aug 2, 2018 at 7:55
+hernytan's user avatar
+hernytan
+13311 gold badge22 silver badges55 bronze badges
+Add a comment
+Your Answer
+Sign up or log in
+Post as a guest
+Name
+Email
+Required, but never shown
+
+By clicking “Post Your Answer”, you agree to our terms of service and acknowledge you have read our privacy policy.
+
+Not the answer you're looking for? Browse other questions tagged vim or ask your own question.
+The Overflow Blog
+Legal advice from an AI is illegal
+Featured on Meta
+The December 2024 Community Asks Sprint has been moved to March 2025 (and...
+Stack Overflow Jobs is expanding to more countries
+8 people chatting
+Linked
+1
+Vim : Open all .c and .h in all subdirectories
+-1
+What does -p mean when launching vim in bash?
+Related
+45
+How to open a file in a list of files in Vim?
+88
+How can I open several files at once in Vim?
+14
+Open all files that match a certain pattern in Vim
+4
+Open all files (including hidden) in vi
+52
+Is there a way to open multiple files at once from vim?
+2
+Open all files in a directory in different Vim windows
+4
+Is there a way for vim to open all .C and .H files in a directory and all its subdirectories?
+1
+Vim Basic - how to open multiple files
+1
+How to open all files in directory by vim in one file?
+2
+How to open files from within Vim
+Hot Network Questions
+Identify short story about scientists spending every second of their lives learning only adding new info in their last days, looking for immortality
+Is SQL Injection possible if we're using only the IN keyword (no equals = operator) and we handle the single quote
+Openssl, how to avoid the request and instruct command to take from configuration file?
+Why does Cambridge dictionary use present unreal conditional to describe past real conditional?
+Different multimeters give massively different resistance readings when measuring between HV+ and HV- on a hybrid car. Why is this?
+How to enter a "proper" address on Malaysia Digital Arrival Card (MDAC)?
+If I sacrifice a Forsaken Miner to the card Eaten Alive do I get the miner back?
+Why don't protons and neutrons get ejected by the photoelectric effect?
+How to interpret being told that there are no current PhD openings but I should "keep in touch" for potential future opportunities?
+Return highest value for each point based on weighted distance for each object in collection
+Why are straight in approaches dangerous at uncontrolled airfields?
+rand Template Function Implementation for Image in C++
+Why does the Apple II have the VERIFY command in DOS 3.3 and ProDOS?
+Is it OK to use longjmp to break out of qsort?
+How to buy residential realty, without conveying purchase money to any lawyer’s trust account?
+(In the context of being local to a place) "I am a native Londoner." VS "I am an original Londoner."
+How to calculate the slope of a line of best fit that minimizes mean absolute error?
+In a life-and-death emergency, could an airliner pull away from the gate?
+How to teach high school students to analyze diagrams in a proof?
+Center table headers over certain columns
+Confusion between displacement and distance in pendulum
+How to fix volume distribution (geo nodes)>
+Magnetic door catch for interior door is loose inside of the door jamb and the screw is spinning freely when tightened. How do I troubleshoot this?
+PSE Advent Calendar 2024 (Day 17): The Sun Will Come Out Tomorrow
+ Question feed
+
+Stack Overflow
+Questions
+Help
+Chat
+Products
+Teams
+Advertising
+Talent
+Company
+About
+Press
+Work Here
+Legal
+Privacy Policy
+Terms of Service
+Contact Us
+Cookie Settings
+Cookie Policy
+Stack Exchange Network
+Technology
+Culture & recreation
+Life & arts
+Science
+Professional
+Business
+API
+Data
+Blog
+Facebook
+Twitter
+LinkedIn
+Instagram
+Site design / logo © 2024 Stack Exchange Inc; user contributions licensed under CC BY-SA . rev 2024.12.17.20590
