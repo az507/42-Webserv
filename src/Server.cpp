@@ -47,7 +47,7 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
             perror("Socket creation failed");
             exit(EXIT_FAILURE);
         }
-        std::cout << "Server socket created: " << serversocket << std::endl;
+        //std::cout << "Server socket created: " << serversocket << std::endl;
         int s = 1;
         // if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
         // {
@@ -96,9 +96,9 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
             exit(EXIT_FAILURE);
         }
         serversockets.push_back(serversocket);
-        //std::cout << "Server is listening on port " << serverinfo[i].second << std::endl;
-                std::cout << "Server is listening on " << (ip.empty() ? "all interfaces" : ip)
-                  << ":" << port << std::endl;
+        ////std::cout << "Server is listening on port " << serverinfo[i].second << std::endl;
+                //std::cout << "Server is listening on " << (ip.empty() ? "all interfaces" : ip)
+                  //<< ":" << port << std::endl;
     }
 }
 //{
@@ -109,7 +109,7 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
 //         perror("Socket creation failed");
 //         exit(EXIT_FAILURE);
 //     }
-//     std::cout << "Server socket created: " << serversocket << std::endl;
+//     //std::cout << "Server socket created: " << serversocket << std::endl;
 //     int s = 1;
 //     if (setsockopt(serversocket, SOL_SOCKET, SO_REUSEADDR, &s, sizeof(s)) < 0) // SOL_SOCKET: socket level, SO_REUSEADDR: reuse the address setsockopt: set the socket option reuse the address
 //     {
@@ -165,7 +165,7 @@ void Server::initsocker(const std::vector<std::pair<std::string, std::string> > 
 //     //     close(serversocket);
 //     //     exit(EXIT_FAILURE);
 //     // }
-//     std::cout << "Server is listening on port " << port << std::endl;
+//     //std::cout << "Server is listening on port " << port << std::endl;
 // }
 
 void Server::initepoll()
@@ -176,14 +176,14 @@ void Server::initepoll()
         perror("epoll creation failed");
         exit(EXIT_FAILURE);
     }
-    std::cout << "Epoll instance created: " << epollfd << std::endl;
+    //std::cout << "Epoll instance created: " << epollfd << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
     for (size_t i = 0; i < serversockets.size(); ++i)
     {
         ev.data.fd = serversockets[i];
-        std::cout << "Adding server socket to epoll: " << serversockets[i] << std::endl;
-        std::cout << "Epoll FD: " << epollfd << std::endl;
+        //std::cout << "Adding server socket to epoll: " << serversockets[i] << std::endl;
+        //std::cout << "Epoll FD: " << epollfd << std::endl;
         if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serversockets[i], &ev) < 0)
         {
             perror("epoll_ctl failed");
@@ -191,7 +191,7 @@ void Server::initepoll()
             close(serversockets[i]);
             exit(EXIT_FAILURE);
         }
-        std::cout << "Server socket added to epoll successfully." << std::endl;
+        //std::cout << "Server socket added to epoll successfully." << std::endl;
     }
 }
 
@@ -203,12 +203,12 @@ void Server::initepoll()
 //         perror("epoll creation failed");
 //         exit(EXIT_FAILURE);
 //     }
-//     std::cout << "Epoll instance created: " << epollfd << std::endl;
+//     //std::cout << "Epoll instance created: " << epollfd << std::endl;
 //     struct epoll_event ev;
 //     ev.events = EPOLLIN;
 //     ev.data.fd = serversocket;
-//     std::cout << "Adding server socket to epoll: " << serversocket << std::endl;
-//     std::cout << "Epoll FD: " << epollfd << std::endl;
+//     //std::cout << "Adding server socket to epoll: " << serversocket << std::endl;
+//     //std::cout << "Epoll FD: " << epollfd << std::endl;
 //     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serversocket, &ev) < 0)
 //     {
 //         perror("epoll_ctl failed");
@@ -216,7 +216,7 @@ void Server::initepoll()
 //         close(serversocket);
 //         exit(EXIT_FAILURE);
 //     }
-//     std::cout << "Server socket added to epoll successfully." << std::endl;
+//     //std::cout << "Server socket added to epoll successfully." << std::endl;
 
 // }
 
@@ -262,8 +262,8 @@ void Server::handleconnections()
             {
                 if (events[i].events & EPOLLIN)
                     handlerequest(fd);
-                std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
-                std::cout << "fd: " << fd << std::endl;
+                //std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
+                //std::cout << "fd: " << fd << std::endl;
                 close(fd);
                 // if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
                 // {
@@ -306,7 +306,7 @@ void Server::handleconnections()
 //             {
 //                 if (events[i].events & EPOLLIN)
 //                     handlerequest(events[i].data.fd);
-//                 std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
+//                 //std::cout << "events[i].data.fd: " << events[i].data.fd << std::endl;
 //                 close(events[i].data.fd);
 //                 // if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) < 0)
 //                 // {
@@ -354,17 +354,17 @@ std::string Server::createDirListHtml(std::string const& dirpath)
 
     struct dirent *entry;
     pwd = getenv("PWD");
-    std::cout << "\tPWD = " << pwd << std::endl;
+    //std::cout << "\tPWD = " << pwd << std::endl;
     len = pwd ? strlen(pwd) : 0;
     while ((entry = readdir(dir)) != NULL)
     {
         std::string name = entry->d_name;
-        std::cout << "\tNAME = " << name << std::endl;
+        //std::cout << "\tNAME = " << name << std::endl;
         if (name == "." || name == "..")
             continue ;
         path = canonicalize_file_name(name.c_str());
         if (path) {
-            std::cout << "\t PATH = " << path << std::endl;
+            //std::cout << "\t PATH = " << path << std::endl;
         } else {
             perror("canonicalize_file_name");
             exit(1);
@@ -405,13 +405,13 @@ std::string Server::createDirListHtml(std::string const& dirpath) {
             dirname += pwdstr.length();
         }
     }
-    std::cout << "\tDIRNAME = " << (dirname ? dirname : "") << ", DIRPATH = " << dirpath << std::endl;
+    //std::cout << "\tDIRNAME = " << (dirname ? dirname : "") << ", DIRPATH = " << dirpath << std::endl;
     html = "<html><body><h1>Direrctory Listing </h1><ul>";
     while ((entry = readdir(dirp))) {
         name = entry->d_name;
         if (name == "." || name == "..")
             continue ;
-        std::cout << ">>> \tNAME = " << name << std::endl;
+        //std::cout << ">>> \tNAME = " << name << std::endl;
 //        absolute_path = realpath(name.c_str(), NULL);
 //        if (!absolute_path) {
 //            if (isDirectory(name)) {
@@ -430,7 +430,7 @@ std::string Server::createDirListHtml(std::string const& dirpath) {
         if (!relative_path.empty() && relative_path[0] == '/') {
             relative_path.erase(0, 1);
         }
-        std::cout << "\tRELATIVE_PATH = " << relative_path << std::endl;
+        //std::cout << "\tRELATIVE_PATH = " << relative_path << std::endl;
         //if (relative_path.find("dirs") == std::string::npos) {
             html += "<li><a href=\"/dirs/" + relative_path + "\">" + name + "</a></li>";
 //        } else {
@@ -523,8 +523,8 @@ void Server::handlerequest(int client_socket)
         std::string method = request.substr(0, request.find(" "));
         std::string url = request.substr(request.find(" ") + 1);//, request.find(" ", request.find(" ") + 1) - request.find(" ") - 1);
         url = url.substr(0, url.find(" "));
-        std::cout << "Method: " << method << std::endl;
-        std::cout << "URL: " << url << std::endl;
+        //std::cout << "Method: " << method << std::endl;
+        //std::cout << "URL: " << url << std::endl;
 
         std::string sanitizedpath = sanitizepath(rootdir, url);
         if (sanitizedpath.empty())
@@ -534,7 +534,7 @@ void Server::handlerequest(int client_socket)
         }
         else if (method == "GET")
         {
-            std::cout << "GET request received" << std::endl;
+            //std::cout << "GET request received" << std::endl;
             if (isdirectory(sanitizedpath))
             {
                 serverdirlisting(client_socket, sanitizedpath);
@@ -547,7 +547,7 @@ void Server::handlerequest(int client_socket)
         }
         else if (method == "POST")
         {
-            std::cout << "POST request received" << std::endl;
+            //std::cout << "POST request received" << std::endl;
             size_t start = request.find("\r\n\r\n") + 4; // start of the body
             std::string body = request.substr(start);
 
@@ -567,7 +567,7 @@ void Server::handlerequest(int client_socket)
         }
         else if (method == "DELETE")
         {
-            std::cout << "DELETE request received" << std::endl;
+            //std::cout << "DELETE request received" << std::endl;
             std::string filepath = rootdir + url;
             if (remove(filepath.c_str()) == 0)
             {

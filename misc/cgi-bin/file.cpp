@@ -17,10 +17,10 @@ int main(int argc, char *argv[], char *envp[]) {
         if (!infile.is_open()) {
             return 1;
         }
-        std::cout << "HTTP/1.1 200 OK\r\n";
-        std::cout << "Content-Length: " << getFileLength(argv[1]) << "\r\n";
-        std::cout << "Content-Type: text/plain\r\n";
-        std::cout << "Connection: keep-alive\r\n\r\n";
-        std::copy(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>(), std::ostream_iterator<char>(std::cout));
+        //std::cout << "HTTP/1.1 200 OK\r\n";
+        //std::cout << "Content-Length: " << getFileLength(argv[1]) << "\r\n";
+        //std::cout << "Content-Type: text/plain\r\n";
+        //std::cout << "Connection: keep-alive\r\n\r\n";
+        std::copy(std::istreambuf_iterator<char>(infile), std::istreambuf_iterator<char>(), std::ostream_iterator<char>(//std::cout));
     }
 }

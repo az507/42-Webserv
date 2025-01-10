@@ -31,14 +31,14 @@ bool Client::isConnClosed() const {
 //    time_t diff;
 //
 //    diff = difftime(time(NULL), _lastresponsetime);
-//    std::cout << "diff in time: " << diff << std::endl;
-//    std::cout << "\t>>> _iostate = " << _iostate << std::endl;
+//    //std::cout << "diff in time: " << diff << std::endl;
+//    //std::cout << "\t>>> _iostate = " << _iostate << std::endl;
 //    return false;
 //    bool io_cond = _iostate == CONN_CLOSED;
 //    bool tm_cond = difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL;
-//    std::cout << std::boolalpha << "io_cond: " << io_cond << ", tm_cond: " << tm_cond << std::endl;
+//    //std::cout << std::boolalpha << "io_cond: " << io_cond << ", tm_cond: " << tm_cond << std::endl;
 //    return io_cond || tm_cond;
-    return (_iostate == CONN_CLOSED) || (difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL);
+    return (_iostate == CONN_CLOSED);// || (difftime(time(NULL), _lastresponsetime) > TIMEOUT_VAL);
         //&& _iostate != RECV_CGI && _iostate != SEND_CGI));
 }
 

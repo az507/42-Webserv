@@ -40,7 +40,7 @@ RouteInfo const* Client::findRouteInfo() const {
         if (findpos == 0 && /*findpos != std::string::npos &&*/ len > max_len) {
             it = p;
             max_len = len;
-            std::cout << "\tMAX_LEN = " << max_len << std::endl;
+            //std::cout << "\tMAX_LEN = " << max_len << std::endl;
         }
     }
     assert(it != ite);
@@ -81,13 +81,13 @@ int Client::parseStartLine() {
         setErrorState(505); //HTTP Version Not Supporte
     } else {
         _route = findRouteInfo();
-//        std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
-//        std::cout << *_route << std::endl;
+//        //std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
+//        //std::cout << *_route << std::endl;
         assert(_route);
         if (!(_httpmethod & _route->http_methods)) {
             setErrorState(405); // Method not allowed
         }
-        std::cout << "Before, _requesturi: " << _requesturi << std::endl;
+        //std::cout << "Before, _requesturi: " << _requesturi << std::endl;
         //_requesturi.replace(0, _requesturi.find(_route->prefix_str), _route->root);
         //if (_route && _requesturi.find(_route->root) != std::string::npos) {
         char resolvedpath[PATH_MAX];
@@ -96,7 +96,7 @@ int Client::parseStartLine() {
         } else {
             _requesturi.replace(0, _route->prefix_str.length(), _route->root);
         }
-        std::cout << "\t_requesturi: " << _requesturi << std::endl;
+        //std::cout << "\t_requesturi: " << _requesturi << std::endl;
         std::vector<std::string>::const_iterator it;
         if (!Server::isDirectory(_requesturi)) {
             for (it = _route->cgi_extensions.begin(); it != _route->cgi_extensions.end(); ++it)
@@ -118,7 +118,7 @@ int Client::parseStartLine() {
 //        } else {
 //
 //        }
-        std::cout << "After, _requesturi: " << _requesturi << '\n' << std::endl;
+        //std::cout << "After, _requesturi: " << _requesturi << '\n' << std::endl;
         setPState(HEADERS);
     }
     return 1;
@@ -145,7 +145,7 @@ int Client::parseHeaders(size_t& bytes) {
             }
         }
     }
-    //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
+    //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(//std::cout, "\n"));
     if (!configureIOMethod(_headers)) {
         return -1;
     }

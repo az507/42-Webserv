@@ -23,7 +23,7 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
             if (pos == std::string::npos) {
                 line.erase(std::remove_if(line.begin(), line.end(), &isspace), line.end());
                 if (line == "server") {
-                    std::cout << "\t in here, creating another server block\n";
+                    //std::cout << "\t in here, creating another server block\n";
                     servers.push_back((ServerInfo){});
                 } else if (!line.compare(0, 8, "location")) {
                     servers.at(servers.size() - 1).routes.push_back((RouteInfo){}); //std::vector<>::at should throw exception if server.empty()
@@ -50,7 +50,7 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
             }
         }
     }
-    printServerInfo();
+    //printServerInfo();
     //exit(1);
 }
 
@@ -94,10 +94,10 @@ std::ostream& operator<<(std::ostream& os, ServerInfo const& serv) {
 
 void ConfigFile::printServerInfo() const {
 
-    std::cout << "max_clients: " << ServerInfo::max_clients << '\n';
-    std::cout << "error_pages: " << std::setw(4);
+    //std::cout << "max_clients: " << ServerInfo::max_clients << '\n';
+    //std::cout << "error_pages: " << std::setw(4);
     for (std::map<int, std::string>::const_iterator it = ServerInfo::error_pages.begin(); it != ServerInfo::error_pages.end(); ++it) {
-        std::cout << it->first << " => " << it->second << '\n' << std::setw(17);
+        //std::cout << it->first << " => " << it->second << '\n' << std::setw(17);
     }
     std::copy(servers.begin(), servers.end(), std::ostream_iterator<ServerInfo>(std::cout << '\n'));
 }
