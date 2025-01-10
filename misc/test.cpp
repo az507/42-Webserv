@@ -47,9 +47,9 @@ int main() {
     };
 
     for (int i = 0; i < 4; ++i) {
-        //std::cout << "before, strs[" << i << "]: " << strs[i] << std::endl;
-        //std::cout << "after1, res = " << trimExtraChars(strs[i], '/') << std::endl;
+        std::cout << "before, strs[" << i << "]: " << strs[i] << std::endl;
+        std::cout << "after1, res = " << trimExtraChars(strs[i], '/') << std::endl;
         trimExtraChars1(strs[i], '/');
-        //std::cout << "after2, strs[" << i << "]: " << strs[i] << std::endl;
+        std::cout << "after2, strs[" << i << "]: " << strs[i] << std::endl;
     }
 }

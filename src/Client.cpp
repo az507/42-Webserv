@@ -23,12 +23,12 @@ bool Client::operator!=(int sockfd) {
 }
 
 bool Client::operator==(int eventfd) {
-    ////std::cout << "in Client::operator==, eventfd = " << eventfd << std::endl;
+    //std::cout << "in Client::operator==, eventfd = " << eventfd << std::endl;
     if (!_cgis.empty()) {
         _currptr = std::find_if(_cgis.begin(), _cgis.end(), std::bind2nd(std::mem_fun_ref(&CGI::operator==), eventfd));
     }
     if (_currptr != _cgis.end()) {
-        ////std::cout << "Found cgi event, size: " << _cgis.size() << std::endl;
+        //std::cout << "Found cgi event, size: " << _cgis.size() << std::endl;
     }
     return _currptr != _cgis.end() || eventfd == _clientfd;
 }
@@ -80,7 +80,7 @@ void Client::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    ////std::cout << "parent in socketRecv" << std::endl;
+    //std::cout << "parent in socketRecv" << std::endl;
     assert(_iostate != RECV_CGI);
     if (_iostate == RECV_HTTP && _cgis.empty()) {
         bytes = recv(_clientfd, buf, BUFSIZE, MSG_DONTWAIT);
@@ -88,7 +88,7 @@ void Client::socketRecv() {
             case -1:        //handle_error("client recv");
             case 0:         /* closeCgis(), */closeConnection(); break ;
             default:        buf[bytes] = '\0';
-                            //std::cout << buf << std::endl;
+                            std::cout << buf << std::endl;
                             parseHttpRequest(buf, bytes); _lastresponsetime = time(NULL); break ;
         }
     } else if (!_cgis.empty() && _currptr != _cgis.end() && _currptr->getIOState() == RECV_CGI) {
@@ -99,19 +99,19 @@ void Client::socketRecv() {
 }
 
 void Client::printFds() const {
-    //std::cout << "_clientfd: " << _clientfd << ", ";
+    std::cout << "_clientfd: " << _clientfd << ", ";
     if (_cgis.empty()) {
-        //std::cout << "(no cgi fd here)";
+        std::cout << "(no cgi fd here)";
     } else {
-        //int idx = -1;
+        int idx = -1;
         for (std::list<CGI>::const_iterator it = _cgis.begin(); it != _cgis.end(); ++it) {
             if (&*it != &*_currptr) {
-                //std::cout << "_currptr: ";
+                std::cout << "_currptr: ";
             }
-            //std::cout << ++idx << ") " << it->getFds();
+            std::cout << ++idx << ") " << it->getFds();
         }
     }
-    //std::cout << std::endl;
+    std::cout << std::endl;
 }
 
 void Client::socketSend() {
@@ -119,7 +119,7 @@ void Client::socketSend() {
     ssize_t bytes;
     std::map<std::string, std::string>::const_iterator it;
 
-//    //std::cout << "parent in socketSend, _iostate = " << _iostate << ", fds: ";
+//    std::cout << "parent in socketSend, _iostate = " << _iostate << ", fds: ";
 //    printFds();
     assert(_iostate != SEND_CGI);
     if (_iostate == SEND_HTTP && _cgis.empty()) {
@@ -142,14 +142,14 @@ void Client::socketSend() {
                             }
         }
     } else if (!_cgis.empty() && _currptr != _cgis.end()
-        && ((iostate = _currptr->getIOState() == SEND_HTTP) || iostate == SEND_CGI)) {
+        && ((iostate = _currptr->getIOState()) == SEND_HTTP || iostate == SEND_CGI)) {
         if (!_currptr->socketSend()) {
             _cgis.erase(_currptr);
             _currptr = _cgis.end();
             //assert(0);
         }
     } else {
-        ////std::cout << "bypassing Client::socketSend() for now" << std::endl;
+        //std::cout << "bypassing Client::socketSend() for now" << std::endl;
         //assert(0);
     }
 }
@@ -221,7 +221,7 @@ ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& 
     std::vector<ServerInfo>::const_iterator it, ite;
 
     for (it = _servers.begin(), ite = _servers.end(); it != ite; ++it) {
-        //std::copy(it->connfds.begin(), it->connfds.end(), std::ostream_iterator<int>(//std::cout, "\n"));
+        //std::copy(it->connfds.begin(), it->connfds.end(), std::ostream_iterator<int>(std::cout, "\n"));
         if (std::find_if(it->connfds.begin(), it->connfds.end(), std::bind2nd(std::equal_to<int>(), connfd)) != it->connfds.end()) {
             break ;
         }

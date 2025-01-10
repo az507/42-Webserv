@@ -40,7 +40,7 @@ RouteInfo const* Client::findRouteInfo() const {
         if (findpos == 0 && /*findpos != std::string::npos &&*/ len > max_len) {
             it = p;
             max_len = len;
-            //std::cout << "\tMAX_LEN = " << max_len << std::endl;
+            std::cout << "\tMAX_LEN = " << max_len << std::endl;
         }
     }
     assert(it != ite);
@@ -81,13 +81,13 @@ int Client::parseStartLine() {
         setErrorState(505); //HTTP Version Not Supporte
     } else {
         _route = findRouteInfo();
-//        //std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
-//        //std::cout << *_route << std::endl;
+//        std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
+//        std::cout << *_route << std::endl;
         assert(_route);
         if (!(_httpmethod & _route->http_methods)) {
             setErrorState(405); // Method not allowed
         }
-        //std::cout << "Before, _requesturi: " << _requesturi << std::endl;
+        std::cout << "Before, _requesturi: " << _requesturi << std::endl;
         //_requesturi.replace(0, _requesturi.find(_route->prefix_str), _route->root);
         //if (_route && _requesturi.find(_route->root) != std::string::npos) {
         char resolvedpath[PATH_MAX];
@@ -96,19 +96,19 @@ int Client::parseStartLine() {
         } else {
             _requesturi.replace(0, _route->prefix_str.length(), _route->root);
         }
-        //std::cout << "\t_requesturi: " << _requesturi << std::endl;
+        std::cout << "\t_requesturi: " << _requesturi << std::endl;
         std::vector<std::string>::const_iterator it;
         if (!Server::isDirectory(_requesturi)) {
             for (it = _route->cgi_extensions.begin(); it != _route->cgi_extensions.end(); ++it)
             {
                 if (_requesturi.find(*it) != std::string::npos)
                 {
-                    if (access(_requesturi.c_str(), X_OK | F_OK) == -1)
+                    if (_httpmethod != POST_METHOD && access(_requesturi.c_str(), X_OK | F_OK) == -1)
                         return setErrorState(404), -1;
                     break ;
                 }
             }
-            if (it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1) {
+            if (_httpmethod == GET_METHOD && it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1) {
                 return setErrorState(404), -1;
             }
         }
@@ -118,7 +118,7 @@ int Client::parseStartLine() {
 //        } else {
 //
 //        }
-        //std::cout << "After, _requesturi: " << _requesturi << '\n' << std::endl;
+        std::cout << "After, _requesturi: " << _requesturi << '\n' << std::endl;
         setPState(HEADERS);
     }
     return 1;
@@ -145,7 +145,7 @@ int Client::parseHeaders(size_t& bytes) {
             }
         }
     }
-    //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(//std::cout, "\n"));
+    //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
     if (!configureIOMethod(_headers)) {
         return -1;
     }
@@ -184,15 +184,13 @@ bool Client::configureIOMethod(std::map<std::string, std::string> const& _header
     if (_headers.count(content_length) && _headers.count(transfer_encoding)) {
         setErrorState(400);//bad request // both headers should never exist together
         return false;
-    }
-    if (_headers.count(content_length)) {
+    } else if (_headers.count(content_length)) {
         _tracklength = true;
         if (!(std::istringstream(_headers.find(content_length)->second) >> _bytesleft)) { // num too large
             setErrorState(400);//bad request
             return false;
         }
-    }
-    if (_headers.count(transfer_encoding) && _headers.find(transfer_encoding)->second == "chunked") {
+    } else if (_headers.count(transfer_encoding) && _headers.find(transfer_encoding)->second == "chunked") {
         _unchunkflag = true;
     }
     return true;
@@ -270,6 +268,7 @@ int Client::unchunkRequest()
         size_t chunk_size;
         if (!(iss >> std::hex >> chunk_size)) 
         {
+            assert(0);
             return setErrorState(400), -1; // Invalid chunk size
         }
 
@@ -292,7 +291,7 @@ int Client::unchunkRequest()
         // Ensure the buffer contains the full chunk data and trailing \r\n
         if (_recvbuf.size() < chunk_size + newline.length()) 
         {
-            break; // Wait for more data
+            break ; // Wait for more data
         }
 
         // Append the chunk data to msg_body

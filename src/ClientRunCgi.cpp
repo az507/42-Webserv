@@ -18,11 +18,11 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
                         Client::registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
     }
     if (_httpmethod == POST_METHOD) {
-        //std::cout << "cgi object created (SEND_CGI)" << std::endl;
+        std::cout << "cgi object created (SEND_CGI)" << std::endl;
         _cgis.push_back(CGI(SEND_CGI, pipefds[0], _clientfd));
         _cgis.back().setCgiInput(_msgbody);
     } else {
-        //std::cout << "cgi object created (RECV_CGI)" << std::endl;
+        std::cout << "cgi object created (RECV_CGI)" << std::endl;
         _cgis.push_back(CGI(RECV_CGI, pipefds[0], _clientfd));
     }
     setIOState(RECV_HTTP);

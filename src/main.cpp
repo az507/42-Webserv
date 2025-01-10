@@ -36,7 +36,7 @@
 //     }
 
 //     // Print _server start message
-//     //std::cout << "Starting _server on port " << port << "..." << std::endl;
+//     std::cout << "Starting _server on port " << port << "..." << std::endl;
 
 //     try {
 //         Server _server(port); // Initialize _server

@@ -67,7 +67,7 @@ void sigchldHandler(int sig) {
 //         int status;
 //         waitpid(pid, &status, WNOHANG);
 //         if (WIFEXITED(status)) {
-//             //std::cout << "CGI exited with status " << WEXITSTATUS(status) << std::endl;
+//             std::cout << "CGI exited with status " << WEXITSTATUS(status) << std::endl;
 //         }
 //     }
 // }
@@ -94,9 +94,9 @@ int main(int argc, char *argv[], char *envp[]) {
     } catch (std::exception const& e) {
         return std::cerr << e.what() << '\n', 1;
     }
-    //int idx = 0;
+    int idx = 0;
     for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
-        //std::cout << "\tnumber " << ++idx << '\n';
+        std::cout << "\tnumber " << ++idx << '\n';
         assert(!it->routes.empty());
     }
     for (std::vector<ServerInfo>::iterator it = _servers.begin(); it != _servers.end(); ++it) {
@@ -136,10 +136,10 @@ int main(int argc, char *argv[], char *envp[]) {
 //                fcntl(connfd, F_SETFL, flags | O_NONBLOCK);
                 it->connfds.push_back(connfd);
 //                if (node)
-//                    //std::cout << "node: " << node << '\n';
+//                    std::cout << "node: " << node << '\n';
 //                if (service)
-//                    //std::cout << "service: " << service << '\n';
-//                //std::cout << '\n';
+//                    std::cout << "service: " << service << '\n';
+//                std::cout << '\n';
                 break ;
             }
             if (connfd == -1) {
@@ -155,26 +155,26 @@ int main(int argc, char *argv[], char *envp[]) {
             return perror("listen"), 1;
         }
     }
-    const char *pwd = NULL;
-    for (int i = 0; envp[i] != NULL; ++i) {
-        if (!strncmp(envp[i], "PWD=", 4)) {
-            pwd = strchr(envp[i], '=') + 1;
-            break ;
-        }
-    }
-    if (pwd) {
-        //std::cout << "PWD: " << pwd << '\n';
-    }
-    for (std::vector<ServerInfo>::iterator it = _servers.begin(); it != _servers.end(); ++it) {
-        for (std::vector<RouteInfo>::iterator tmp = it->routes.begin(); tmp != it->routes.end(); ++tmp) {
-            if (!tmp->root.empty() && tmp->root.find('/') == std::string::npos && pwd) {
+//    const char *pwd = NULL;
+//    for (int i = 0; envp[i] != NULL; ++i) {
+//        if (!strncmp(envp[i], "PWD=", 4)) {
+//            pwd = strchr(envp[i], '=') + 1;
+//            break ;
+//        }
+//    }
+//    if (pwd) {
+//        std::cout << "PWD: " << pwd << '\n';
+//    }
+//    for (std::vector<ServerInfo>::iterator it = _servers.begin(); it != _servers.end(); ++it) {
+//        for (std::vector<RouteInfo>::iterator tmp = it->routes.begin(); tmp != it->routes.end(); ++tmp) {
+//            if (!tmp->root.empty() && tmp->root.find('/') == std::string::npos && pwd) {
 //                tmp->root.insert(tmp->root.begin(), '/');
 //                tmp->root.insert(0, pwd);
-                ////std::cout << "tmp->root: " << tmp->root << '\n';
-            }
-            //std::cout << "tmp->root: " << tmp->root << '\n';
-        }
-    }
+//                std::cout << "tmp->root: " << tmp->root << '\n';
+//            }
+//            std::cout << "tmp->root: " << tmp->root << '\n';
+//        }
+//    }
 
     socklen_t addrlen;
     struct sockaddr addr;
@@ -208,7 +208,7 @@ int main(int argc, char *argv[], char *envp[]) {
             }
             return perror("epoll_wait"), 1;
         }
-        ////std::cout << "\tnfds: " << nfds << std::endl;
+        //std::cout << "\tnfds: " << nfds << std::endl;
         for (int i = 0; i < nfds; ++i) {
             if (events[i].data.fd > max_connfd) { // data.fd is a sockfd to send/recv to, not a connfd to accept new connections from
                 c_it = std::find_if(clients.begin(), clients.end(), std::bind2nd(std::mem_fun_ref(&Client::operator==), events[i].data.fd));
@@ -217,7 +217,7 @@ int main(int argc, char *argv[], char *envp[]) {
 					//assert(0);
                     continue ;
                 }
-                ////std::cout << "in main, event_fd: " << events[i].data.fd << std::endl;
+                //std::cout << "in main, event_fd: " << events[i].data.fd << std::endl;
                 if (events[i].events & EPOLLIN) {
                     c_it->socketRecv();
                 }
@@ -234,13 +234,13 @@ int main(int argc, char *argv[], char *envp[]) {
                 // if events[i].data.fd is blocking, accept call can potentially block
                 // may need to use fcntl() to set fd to non-blocking
                 sockfd = accept(events[i].data.fd, &addr, &addrlen);
-                ////std::cout << "accept() called\n";
+                //std::cout << "accept() called\n";
                 if (sockfd == -1) {
                     handle_error("accept");
                 }
-//                //std::cout << "event fd used in accept(): " << events[i].data.fd << '\n';
-//                //std::cout << "port nbr: " << ntohs(((struct sockaddr_in *)&addr)->sin_port) << '\n';
-//                //std::cout << "ip addr: " << ntohl( ((struct sockaddr_in *)&addr)->sin_addr.s_addr) << '\n';
+//                std::cout << "event fd used in accept(): " << events[i].data.fd << '\n';
+//                std::cout << "port nbr: " << ntohs(((struct sockaddr_in *)&addr)->sin_port) << '\n';
+//                std::cout << "ip addr: " << ntohl( ((struct sockaddr_in *)&addr)->sin_addr.s_addr) << '\n';
                 // not sure if this two setsockopt()s are needed when MSG_DONTWAIT is set for recv/send
 //                if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
 //                    handle_error("setsockopt recv");
@@ -258,10 +258,10 @@ int main(int argc, char *argv[], char *envp[]) {
         //c_it = std::remove_if(clients.begin(), clients.end(), std::not1(std::mem_fun_ref(&Client::isConnClosed)));
         c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isConnClosed));
         if (c_it != clients.end()) {
-            //std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
+            std::cout << "size of clients list: " << clients.size() << ", number of dead clients: " << std::distance(c_it, clients.end()) << std::endl;
             std::for_each(c_it, clients.end(), std::mem_fun_ref(&Client::closeFds));
             clients.erase(c_it, clients.end());
-            //std::cout << "size of clients after: " << clients.size() << std::endl;
+            std::cout << "size of clients after: " << clients.size() << std::endl;
         }
         clients.splice(clients.end(), temp, temp.begin(), temp.end());
         //memset(events.data(), 0, sizeof(struct epoll_event) * events.size());

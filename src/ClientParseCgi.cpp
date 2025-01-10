@@ -13,7 +13,7 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
         }
         _msgbody.append(buf, bytes);
     }
-    ////std::cout << buf << '\n';
+    //std::cout << buf << '\n';
     do {
         switch (_pstate) {
             case START_LINE:    res = ignoreStartLine(); continue ;
@@ -24,7 +24,7 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
                                 std::swap(_clientfd = -1, passive_fd);
                                 _send_it = _msgbody.begin();
                                 _send_ite = _msgbody.end();
-                                //std::cout << "_msgbody.length(): " << _msgbody.length() << std::endl;
+                                std::cout << "_msgbody.length(): " << _msgbody.length() << std::endl;
                                 return ;
                                 //throw "abc123";
             case ERROR:         break ;

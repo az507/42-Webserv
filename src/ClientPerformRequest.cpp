@@ -6,10 +6,10 @@ int Client::performRequest() {
     char *resolvedpath;
     std::pair<std::string, std::string> reqInfo;
 
-    //std::cout << "1) _requesturi: " << _requesturi << std::endl;
+    std::cout << "1) _requesturi: " << _requesturi << std::endl;
     reqInfo = filterRequestUri();
     writeInitialPortion();
-    //std::cout << "2) _requesturi: " << _requesturi << '\n' << std::endl;
+    std::cout << "2) _requesturi: " << _requesturi << '\n' << std::endl;
     // sanitize path here
     //if (realpath(_requesturi.c_str(), resolvedpath)) {
     resolvedpath = canonicalize_file_name(_requesturi.c_str());
@@ -17,7 +17,7 @@ int Client::performRequest() {
         _requesturi = resolvedpath;
         free(resolvedpath);
         resolvedpath = NULL;
-        //std::cout << "AFTER CANONICALIZE_FILE_NAME: _requesturi: " << _requesturi << std::endl;
+        std::cout << "AFTER CANONICALIZE_FILE_NAME: _requesturi: " << _requesturi << std::endl;
     } else {
         //kill(getpid(), SIGSEGV);
         //perror(std::string(_requesturi).insert(0, "\tabc: ").c_str());
@@ -46,7 +46,7 @@ int Client::performRequest() {
 off_t Client::getContentLength(std::string const& filename) {
     struct stat statbuf;
 
-    //std::cout << "\t>>> FILENAME IN GETCONTENTLENGTH() = " << filename << '$' << std::endl;
+    std::cout << "\t>>> FILENAME IN GETCONTENTLENGTH() = " << filename << '$' << std::endl;
     if (/*_httpmethod == GET_METHOD && */stat(filename.c_str(), &statbuf) == 0) {
         return statbuf.st_size;
     } else {
@@ -68,7 +68,7 @@ void Client::writeInitialPortion() {
     oss << conn << ": ";
     if (_headers.count(conn)) {
         oss << _headers[conn];
-        ////std::cout << "1-Connection: " << _headers[conn];
+        //std::cout << "1-Connection: " << _headers[conn];
     } else {
         oss << (_headers[conn] = "close");
     }
@@ -136,8 +136,8 @@ int Client::performGetMethod() {
 
     if (_route && _route->dir_list && Server::isDirectory(_requesturi)) {
         dirlist = Server::createDirListHtml(_requesturi);
-        //std::cout << "\t===== DIRLIST =====" << std::endl;
-        ////std::cout << dirlist << std::endl;
+        std::cout << "\t===== DIRLIST =====" << std::endl;
+        //std::cout << dirlist << std::endl;
         //throw std::exception();
         if (dirlist.empty()) {
             setErrorState(404);
@@ -145,12 +145,12 @@ int Client::performGetMethod() {
             _filebuf = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
                 + str_convert(dirlist.length()) + "\r\n\r\n" + dirlist;
         }
-        //std::cout << _filebuf << std::endl;
+        std::cout << _filebuf << std::endl;
     } else if (!writeToFilebuf(_requesturi)) {
         return -1;
     }
-//    //std::cout << "_filebuf.length(): " << _filebuf.length() << '\n';
-//    //std::cout << "_filebuf:\n" << _filebuf << '\n';
+//    std::cout << "_filebuf.length(): " << _filebuf.length() << '\n';
+//    std::cout << "_filebuf:\n" << _filebuf << '\n';
     _send_it = _filebuf.begin();
     _send_ite = _filebuf.end();
     return 0;
@@ -219,7 +219,7 @@ int Client::writeToFilebuf(std::string const& filename) {
     std::ifstream infile;
     
     filestr = filename.c_str();
-    ////std::cout << "filestr: " << filestr << '\n';
+    //std::cout << "filestr: " << filestr << '\n';
     if (access(filestr, F_OK | R_OK) == -1 || Server::isDirectory(filename)) {
         perror(filestr);
         return setErrorState(404), 0;
