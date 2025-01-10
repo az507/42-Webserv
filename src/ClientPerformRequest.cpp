@@ -20,7 +20,7 @@ int Client::performRequest() {
         std::cout << "AFTER CANONICALIZE_FILE_NAME: _requesturi: " << _requesturi << std::endl;
     } else {
         //kill(getpid(), SIGSEGV);
-        //perror(std::string(_requesturi).insert(0, "\tabc: ").c_str());
+        //perror(request_uri.c_str());
     }
     if (reqInfo.second.empty()) { // no cgi-extension found
         switch (_httpmethod) {
@@ -61,7 +61,7 @@ void Client::writeInitialPortion() {
 
     oss << "HTTP/1.1 " << _httpcode << ' ' << getHttpStatus(_httpcode) << "\r\n";
     //oss << "Content-Type: " << getContentType(request_uri) << "\r\n";
-    if (Client::_httpmethod == GET_METHOD || _pstate == ERROR)
+    if (Client::_httpmethod == 1 || _pstate == ERROR)
         oss << "Content-Length: " << getContentLength(_requesturi) << "\r\n";
     else
         oss << "Content-Length: 0\r\n";

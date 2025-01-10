@@ -15,7 +15,7 @@
 # include <limits.h>
 
 # define BUFSIZE 1024
-# define TIMEOUT_VAL 5.0
+# define TIMEOUT_VAL 100.0
 # define handle_error(err) \
     do { std::cout << err << ": " << strerror(errno) << '\n'; exit(EXIT_FAILURE); } while (0);
 

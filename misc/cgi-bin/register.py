@@ -34,4 +34,4 @@ with open(user_data_file, "a") as f:
     f.write(f"{username},{password}\n")
 
 print("<h1>Registration successful!</h1>")
-print("<p>You can now <a href='../cgi-bin/login.py'>login</a>.</p>")
+print("<p>You can now <a href='/misc/cgi-bin/login.py'>login</a>.</p>")
