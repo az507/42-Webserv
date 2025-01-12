@@ -125,8 +125,8 @@ void Client::socketSend() {
         std::ptrdiff_t dist;
         bytes = send(_clientfd, &*_send_it, dist = std::distance(_send_it, _send_ite), MSG_DONTWAIT);
         switch (bytes) {
-            case -1:
-            case 0:         perror("send client"); closeConnection(); break ;
+            case -1:        perror("send client"); closeConnection(); break ;
+            case 0:         closeConnection(); break ;
             default:        std::advance(_send_it, bytes);
                             if (_send_it == _send_ite) {
                                 it = _headers.find("Connection");

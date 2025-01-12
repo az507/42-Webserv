@@ -16,7 +16,6 @@ void sigchldHandler(int sig) {
     }
 }
 
-
 // static void handleCgiScript(const std::string &scriptPath, int clientFd) {
 //     int cgiOutput[2];
 //     pid_t pid;
@@ -153,26 +152,6 @@ int main(int argc, char *argv[], char *envp[]) {
             return perror("listen"), 1;
         }
     }
-    const char *pwd = NULL;
-    for (int i = 0; envp[i] != NULL; ++i) {
-        if (!strncmp(envp[i], "PWD=", 4)) {
-            pwd = strchr(envp[i], '=') + 1;
-            break ;
-        }
-    }
-    if (pwd) {
-        std::cout << "PWD: " << pwd << '\n';
-    }
-    for (std::vector<ServerInfo>::iterator it = _servers.begin(); it != _servers.end(); ++it) {
-        for (std::vector<RouteInfo>::iterator tmp = it->routes.begin(); tmp != it->routes.end(); ++tmp) {
-            if (!tmp->root.empty() && tmp->root.find('/') == std::string::npos && pwd) {
-//                tmp->root.insert(tmp->root.begin(), '/');
-//                tmp->root.insert(0, pwd);
-                //std::cout << "tmp->root: " << tmp->root << '\n';
-            }
-            std::cout << "tmp->root: " << tmp->root << '\n';
-        }
-    }
 
     socklen_t addrlen;
     struct sockaddr addr;
@@ -267,6 +246,10 @@ int main(int argc, char *argv[], char *envp[]) {
         temp.splice(clients.end(), temp, temp.begin(), temp.end());
         // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
         // clients.erase(c_it, clients.end());
+        while (waitpid(-1, NULL, WNOHANG) > 0) ; 
+        if (errno == ECHILD) {
+            errno = 0;
+        }
     }
 
     for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {

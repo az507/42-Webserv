@@ -6,7 +6,7 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 15:52:25 by xzhang            #+#    #+#             */
-/*   Updated: 2024/12/20 16:43:26 by achak            ###   ########.fr       */
+/*   Updated: 2025/01/12 16:09:59 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -391,12 +391,15 @@ std::string Server::createDirListHtml(std::string const& dirpath) {
     const char *pwd, *dirname;//, *absolute_path;
     std::string html, name, pwdstr, relative_path;
 
+    std::cout << "CURRENT PWD: " << getcwd(NULL, 100) << ", dirpath: " << dirpath << std::endl;
     dirp = opendir(dirpath.c_str());
+    if (!dirp) {
+        return perror("opendir"), "";
+    }
     pwd = getenv("PWD");
-    if (!dirp)
-        handle_error("opendir");
-    if (!pwd)
-        handle_error("getenv");
+    if (!pwd) {
+        return perror("getenv"), closedir(dirp), "";
+    }
     pwdstr = pwd;
     if ((dirname = strstr(dirpath.c_str(), pwd))) {
         if (!isDirectory(dirname) || dirpath.size() <= pwdstr.size()) {
@@ -422,8 +425,13 @@ std::string Server::createDirListHtml(std::string const& dirpath) {
 //        }
 //        assert(strstr(absolute_path, pwd));
 //        relative_path.assign(absolute_path).replace(0, pwdlen, "");
-        if (dirname) {
-            relative_path.assign(dirname).append(1, '/').append(name);
+//        if (dirname) {
+//            relative_path.assign(dirname).append(1, '/').append(name);
+//        } else {
+//            relative_path.assign(name);
+//        }
+        if (!dirpath.empty() && dirpath != ".") {
+            relative_path.assign(dirpath).append(1, '/').append(name);
         } else {
             relative_path.assign(name);
         }
@@ -437,6 +445,7 @@ std::string Server::createDirListHtml(std::string const& dirpath) {
 //            html += "<li><a href=\"" + relative_path + "\">" + name + "</a></li>";
 //        }
     }
+    closedir(dirp);
     html += "</ul></body></html>";
     return html;
 }

@@ -3,6 +3,33 @@
 int ServerInfo::max_clients;
 std::map<int, std::string> ServerInfo::error_pages;
 
+/*
+std::string getBasename(const std::string& fullpath) {
+    size_t pos;
+    if (fullpath.size() > 1) {
+        pos = fullpath.find_last_of('/', fullpath[fullpath.size() - 1] == '/' ? fullpath.length() - 2 : std::string::npos);
+        if (pos != std::string::npos && ++pos < fullpath.length()) {
+            return fullpath.substr(pos, fullpath.find('/', pos));
+        }
+    }
+    return fullpath;
+}
+    char *path = NULL;
+    for (std::vector<ServerInfo>::iterator it = servers.begin(); it != servers.end(); ++it) {
+        for (std::vector<RouteInfo>::iterator r_it = it->routes.begin(); r_it != it->routes.end(); ++r_it) {
+            if (!r_it->root.empty()) {
+                path = canonicalize_file_name(r_it->root.c_str());
+                if (!path) {
+                    const char *err = strerror(errno);
+                    throw std::runtime_error(std::string("canonicalize_file_name: ") + err);
+                }
+                r_it->root = getBasename(path);
+                free(path);
+            }
+        }
+    }
+*/
+
 ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKeywords()), setters(initSetters()) {
     size_t pos;
     int token_type;

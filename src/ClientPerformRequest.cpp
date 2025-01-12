@@ -131,16 +131,53 @@ std::pair<std::string, std::string> Client::filterRequestUri() {
     return reqInfo;
 }
 
+std::string getBaseDir(const std::string& fullpath, const std::string& root) {
+    std::string::const_iterator it;
+    if (root == ".") {
+        return root;
+    }
+    if (fullpath.size() > root.size()) {
+        it = std::search(fullpath.begin(), fullpath.end(), root.begin(), root.end());
+        if (it != fullpath.end()) {
+            //it = std::find(it, fullpath.end(), '/');
+            std::advance(it, root.size());
+            if (std::distance(it, fullpath.end()) > 1) {
+                return std::string(it + 1, fullpath.end());
+            }
+            return ".";
+        }
+    }
+    return fullpath;
+}
+
 int Client::performGetMethod() {
-    std::string dirlist;
+    const char *oldpwd, *currpwd;
+    std::string dirlist, basepath;
 
     if (_route && _route->dir_list && Server::isDirectory(_requesturi)) {
-        dirlist = Server::createDirListHtml(_requesturi);
+        currpwd = oldpwd = getenv("PWD");
+        if (!oldpwd || chdir(_route->root.c_str()) == -1) {
+            return perror("oldpwd || chdir"), setErrorState(500), -1;
+        }
+        //dirlist = Server::createDirListHtml(_requesturi);
+        //dirlist = Server::createDirListHtml(getBaseDir(_requesturi, _route->root));
+        if (_route->root != ".") {
+            setenv("PWD", std::string(oldpwd).append(1, '/').append(_route->root).c_str(), 1);
+            currpwd = getenv("PWD");
+        }
+        if (_requesturi == currpwd) {
+            basepath = ".";
+        } else {
+            basepath = getBaseDir(_requesturi, currpwd);
+        }
+        dirlist = Server::createDirListHtml(basepath);
+        assert(chdir(oldpwd) != -1);
+        setenv("PWD", oldpwd, 1);
         std::cout << "\t===== DIRLIST =====" << std::endl;
         //std::cout << dirlist << std::endl;
         //throw std::exception();
         if (dirlist.empty()) {
-            setErrorState(404);
+            return setErrorState(500), -1; // generic server error
         } else {
             _filebuf = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "
                 + str_convert(dirlist.length()) + "\r\n\r\n" + dirlist;

@@ -43,8 +43,7 @@ RouteInfo const* Client::findRouteInfo() const {
             std::cout << "\tMAX_LEN = " << max_len << std::endl;
         }
     }
-    assert(it != ite);
-    return &*it;
+    return it == ite ? NULL : &*it;
 }
 
 int Client::parseStartLine() {
@@ -61,6 +60,10 @@ int Client::parseStartLine() {
     }
     iss.str(_recvbuf.substr(0, pos));
     if (!(iss >> http_str) || !(iss >> _requesturi) || !(iss >> http_version)) {
+        // Strange things happen when displaying index1 html to google browser, will reach here every 1 out of 2 requests
+        // could be due to new cgi: get_resource.sh, 1/8 chance of sending an audio file to browser
+        std::cerr << "\t_recvbuf: " << _recvbuf << '\n';
+        std::cerr << "OPTION A, http_str: " << http_str << ", _requesturi: " << _requesturi<< ", http_version: " << http_version << "\n";
         return setErrorState(400), 1;
     }
     for (int i = 0; i < 3; ++i) {
@@ -69,27 +72,25 @@ int Client::parseStartLine() {
             break ;
         }
     }
-//    if (http_method == DELETE_METHOD) {
-//        std::cerr << "DELETE METHOD ENCOUNTERED, EXITING...\n";
-//        exit(1);
-//    }
     assert(_recvbuf.length() >= pos + newline.length());
     _recvbuf.erase(0, pos + newline.length());
     if (!_httpmethod) {
-        setErrorState(405); //Method Not Allowed
+        return setErrorState(405), -1; //Method Not Allowed
     } else if (http_version != "HTTP/1.1") {
-        setErrorState(505); //HTTP Version Not Supporte
+        return setErrorState(505), -1; //HTTP Version Not Supported
     } else {
         _route = findRouteInfo();
-//        std::cout << "\tPRINTING FOUND ROUTE CONTENTS\n" << std::endl;
-//        std::cout << *_route << std::endl;
-        assert(_route);
+        if (_route && _route->root.empty() && !_route->redirect.empty()) {
+            _requesturi = _route->redirect;
+            _route = findRouteInfo();
+        }
+        if (!_route) {
+            return setErrorState(3), -1;
+        }
         if (!(_httpmethod & _route->http_methods)) {
-            setErrorState(405); // Method not allowed
+            return setErrorState(405), -1; // Method not allowed
         }
         std::cout << "Before, _requesturi: " << _requesturi << std::endl;
-        //_requesturi.replace(0, _requesturi.find(_route->prefix_str), _route->root);
-        //if (_route && _requesturi.find(_route->root) != std::string::npos) {
         char resolvedpath[PATH_MAX];
         if (_route->prefix_str.length() > 1 && realpath(_requesturi.c_str() + 1, resolvedpath)) {
             _requesturi = resolvedpath;
@@ -115,9 +116,6 @@ int Client::parseStartLine() {
         // Directory where file should be searched from
         // PATH_INFO could be in uri, eg /infile in .../script.cgi/infile
         this->_httpmethod = _httpmethod;
-//        } else {
-//
-//        }
         std::cout << "After, _requesturi: " << _requesturi << '\n' << std::endl;
         setPState(HEADERS);
     }
@@ -182,12 +180,14 @@ bool Client::configureIOMethod(std::map<std::string, std::string> const& _header
     static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
 
     if (_headers.count(content_length) && _headers.count(transfer_encoding)) {
+        std::cerr << "OPTION B\n";
         setErrorState(400);//bad request // both headers should never exist together
         return false;
     }
     if (_headers.count(content_length)) {
         _tracklength = true;
         if (!(std::istringstream(_headers.find(content_length)->second) >> _bytesleft)) { // num too large
+            std::cerr << "OPTION C\n";
             setErrorState(400);//bad request
             return false;
         }
@@ -270,6 +270,7 @@ int Client::unchunkRequest()
         size_t chunk_size;
         if (!(iss >> std::hex >> chunk_size)) 
         {
+            std::cerr << "OPTION D\n";
             return setErrorState(400), -1; // Invalid chunk size
         }
 
