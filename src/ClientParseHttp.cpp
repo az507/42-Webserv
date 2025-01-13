@@ -60,10 +60,10 @@ int Client::parseStartLine() {
     }
     iss.str(_recvbuf.substr(0, pos));
     if (!(iss >> http_str) || !(iss >> _requesturi) || !(iss >> http_version)) {
-        // Strange things happen when displaying index1 html to google browser, will reach here every 1 out of 2 requests
-        // could be due to new cgi: get_resource.sh, 1/8 chance of sending an audio file to browser
+        // consistent error here if cgi has content length set
         std::cerr << "\t_recvbuf: " << _recvbuf << '\n';
         std::cerr << "OPTION A, http_str: " << http_str << ", _requesturi: " << _requesturi<< ", http_version: " << http_version << "\n";
+        assert(0);
         return setErrorState(400), 1;
     }
     for (int i = 0; i < 3; ++i) {
@@ -85,7 +85,7 @@ int Client::parseStartLine() {
             _route = findRouteInfo();
         }
         if (!_route) {
-            return setErrorState(3), -1;
+            return setErrorState(404), -1;
         }
         if (!(_httpmethod & _route->http_methods)) {
             return setErrorState(405), -1; // Method not allowed

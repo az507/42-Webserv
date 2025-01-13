@@ -25,6 +25,7 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
         std::cout << "cgi object created (RECV_CGI)" << std::endl;
         _cgis.push_back(CGI(RECV_CGI, pipefds[0], _clientfd));
     }
+    _recvbuf.clear();
     setIOState(RECV_HTTP);
 }
 

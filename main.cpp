@@ -6,11 +6,10 @@
 #include <sys/wait.h>
 
 void sigchldHandler(int sig) {
-    pid_t pid;
 
     if (sig == SIGCHLD) {
-        while ((pid = waitpid(-1, NULL, WNOHANG)) > 0);
-        if (pid == -1) {
+        while (waitpid(-1, NULL, WNOHANG) > 0);
+        if (errno == ECHILD) {
             errno = 0;
         }
     }
@@ -81,7 +80,7 @@ int main(int argc, char *argv[], char *envp[]) {
     std::vector<ServerInfo> _servers;
 
     signal(SIGPIPE, SIG_IGN);
-    //signal(SIGCHLD, &sigchldHandler);
+    signal(SIGCHLD, &sigchldHandler);
     Client::setEnvp(const_cast<const char **>(envp));
 
     if (argc == 1) {
@@ -246,10 +245,6 @@ int main(int argc, char *argv[], char *envp[]) {
         temp.splice(clients.end(), temp, temp.begin(), temp.end());
         // c_it = std::remove_if(clients.begin(), clients.end(), std::mem_fun_ref(&Client::isTimedout));
         // clients.erase(c_it, clients.end());
-        while (waitpid(-1, NULL, WNOHANG) > 0) ; 
-        if (errno == ECHILD) {
-            errno = 0;
-        }
     }
 
     for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {

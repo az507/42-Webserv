@@ -54,14 +54,14 @@ void CGI::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    std::cout << "cgi in socketRecv()" << std::endl;
+    //std::cout << "cgi in socketRecv()" << std::endl;
     assert(_iostate == Client::RECV_CGI);
     bytes = recv(_activefd, buf, BUFSIZE, MSG_DONTWAIT);
-    std::cout << "bytes recv'd in cgi: " << bytes << std::endl;
+    //std::cout << "bytes recv'd in cgi: " << bytes << std::endl;
     if (bytes > 0) {
         buf[bytes] = '\0';
     }
-    std::cout << buf << std::endl;
+    //std::cout << buf << std::endl;
     switch (bytes) {
         case -1:        handle_error("recv cgi");
         case 0:         setClientReady(); break ;
@@ -74,6 +74,7 @@ std::pair<int, int> CGI::getFds() const {
 }
 
 void CGI::setClientReady() {
+    _pstate = Client::FINISHED;
     _iostate = Client::SEND_HTTP;
     _send_it = _clientbuf.begin();
     _send_ite = _clientbuf.end();
@@ -122,7 +123,7 @@ void CGI::parseCgiOutput(const char *buf, ssize_t bytes) {
     if (_pstate == Client::MSG_BODY && _tracklength) {
         bytes = std::min(_recvbytes, (size_t)bytes);
         _clientbuf.append(buf, bytes);
-        std::cout << "parseCgiOutput with _tracklength, bytes: " << bytes << std::endl;
+        //std::cout << "parseCgiOutput with _tracklength, bytes: " << bytes << std::endl;
         if (!_recvbytes) {
             setClientReady();
         }
@@ -167,7 +168,7 @@ int CGI::parseCgiHeaders() {
         }
     }
     configureIOHandling();
-    return 1;
+    return _tracklength == true ? 0 : 1;
 }
 
 void CGI::configureIOHandling() {
@@ -181,8 +182,18 @@ void CGI::configureIOHandling() {
         return setErrorState(2);
     } else if (it1 != ite) {
         _tracklength = true;
-        if (!std::ostringstream(it1->second) >> _recvbytes) {
+        if (!(std::istringstream(it1->second) >> _recvbytes)) {
             return setErrorState(3);
+        }
+//        std::cout << "_clientbuf.length() = " << _clientbuf.length() << std::endl;
+//        std::cout << "in cgi, it->second: " << it1->second << ",  _recvbytes: " << _recvbytes << ", amt: " << (_clientbuf.length() - (_clientbuf.find("\r\n\r\n") + 4)) << std::endl;
+//        assert(0);
+        //_recvbytes -= (_clientbuf.length() - (_clientbuf.find("\r\n\r\n") + 4));
+        _recvbytes -= std::min(_recvbytes, (_clientbuf.length() - (_clientbuf.find("\r\n\r\n") + 4)));
+        if (!_recvbytes) {
+            //std::ofstream("abc.txt") << "_clientbuf: " << _clientbuf << ", " << _recvbytes << std::endl;
+            //assert(0);
+            return setClientReady();
         }
         //_recvbytes = str_convert<size_t>(it1->second);
     } else if (it2 != ite && it2->second == "chunked") {
