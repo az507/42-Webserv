@@ -122,6 +122,28 @@ int Client::parseStartLine() {
     return 1;
 }
 
+int Client::checkServerName() {
+    std::string temp;
+    std::map<std::string, std::string>::const_iterator it;
+
+    it = _headers.find("Host");
+    if (it != _headers.end() && !_server.names.empty()) {
+        for (std::vector<std::string>::const_iterator n_it = _server.names.begin(); n_it != _server.names.end(); ++n_it) {
+            if (std::search(it->second.begin(), it->second.end(), n_it->begin(), n_it->end()) != it->second.end()) {
+                return 0;
+            }
+        }
+        for (std::vector<std::pair<std::string, std::string> >::const_iterator p_it = _server.ip_addrs.begin(); p_it != _server.ip_addrs.end(); ++p_it) {
+            temp = p_it->first + ":" + p_it->second;
+            if (temp == it->second) {
+                return 0;
+            }
+        }
+        return setErrorState(404), -1;
+    }
+    return 0;
+}
+
 int Client::parseHeaders(size_t& bytes) {
     size_t pos, pos1;
     std::string buf;
@@ -144,7 +166,7 @@ int Client::parseHeaders(size_t& bytes) {
         }
     }
     //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
-    if (!configureIOMethod(_headers)) {
+    if (checkServerName() == -1 || !configureIOMethod(_headers)) {
         return -1;
     }
     if (_httpmethod == POST_METHOD) {

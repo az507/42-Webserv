@@ -108,6 +108,7 @@ class Client {
         void parseHttpRequest(const char *, size_t);
         RouteInfo const* findRouteInfo() const;
         int parseStartLine();
+        int checkServerName();
         int parseHeaders(size_t&);
         int parseMsgBody(size_t);
         bool configureIOMethod(std::map<std::string, std::string> const&);
