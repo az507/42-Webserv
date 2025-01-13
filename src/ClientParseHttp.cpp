@@ -109,7 +109,7 @@ int Client::parseStartLine() {
                     break ;
                 }
             }
-            if (it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1) {
+            if (it == _route->cgi_extensions.end() && access(_requesturi.c_str(), F_OK | R_OK) == -1 && _httpmethod != POST_METHOD) {
                 return setErrorState(404), -1;
             }
         }
