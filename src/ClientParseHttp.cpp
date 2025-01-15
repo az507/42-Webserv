@@ -165,7 +165,7 @@ int Client::parseHeaders(size_t& bytes) {
             }
         }
     }
-    std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
+    //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
     //assert(0);
     if (checkServerName() == -1 || !configureIOMethod(_headers)) {
         return -1;
