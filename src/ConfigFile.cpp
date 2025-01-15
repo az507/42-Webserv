@@ -1,6 +1,6 @@
 #include "ConfigFile.hpp"
 
-int ServerInfo::max_clients;
+size_t ServerInfo::max_bodysize = 100000;
 std::map<int, std::string> ServerInfo::error_pages;
 
 /*
@@ -78,7 +78,7 @@ ConfigFile::ConfigFile(const char *filename) : infile(filename), keywords(initKe
         }
     }
     printServerInfo();
-    //exit(1);
+    //throw std::exception();
 }
 
 std::ostream& operator<<(std::ostream& os, RouteInfo const& route) {
@@ -121,7 +121,7 @@ std::ostream& operator<<(std::ostream& os, ServerInfo const& serv) {
 
 void ConfigFile::printServerInfo() const {
 
-    std::cout << "max_clients: " << ServerInfo::max_clients << '\n';
+    std::cout << "max_bodysize: " << ServerInfo::max_bodysize << '\n';
     std::cout << "error_pages: " << std::setw(4);
     for (std::map<int, std::string>::const_iterator it = ServerInfo::error_pages.begin(); it != ServerInfo::error_pages.end(); ++it) {
         std::cout << it->first << " => " << it->second << '\n' << std::setw(17);
@@ -140,7 +140,7 @@ void *ConfigFile::convertIdxToAddr(int idx) {
         case LISTEN:        return reinterpret_cast<void *>(&servers.back().ip_addrs);
         case SERVER_NAME:   return reinterpret_cast<void *>(&servers.back().names);
         case ERROR_PAGE:    return reinterpret_cast<void *>(&ServerInfo::error_pages);
-        case CLIENT_MAX:    return reinterpret_cast<void *>(&ServerInfo::max_clients);
+        case CLIENT_MAX:    return reinterpret_cast<void *>(&ServerInfo::max_bodysize);
         case HTTP_METHODS:  return reinterpret_cast<void *>(&servers.back().routes.back().http_methods);
         case REDIRECT:      return reinterpret_cast<void *>(&servers.back().routes.back().redirect);
         case ROOT:          return reinterpret_cast<void *>(&servers.back().routes.back().root);
@@ -199,9 +199,11 @@ void ConfigFile::errorPageHandler(std::vector<std::string> const& values, void *
     }
 }
 
-void ConfigFile::maxClientsHandler(std::vector<std::string> const& values, void *addr) {
-
-    *(reinterpret_cast<int *>(addr)) = atoi(values.back().c_str());
+void ConfigFile::maxBodysizeHandler(std::vector<std::string> const& values, void *addr) {
+    if (!(std::istringstream(values.back()) >> *(reinterpret_cast<size_t*>(addr)))) {
+        throw std::runtime_error("invalid conversion for max_bodysize");
+    }
+    //*(reinterpret_cast<size_t *>(addr)) = atoi(values.back().c_str());
 }
 
 void ConfigFile::ipAddrsHandler(std::vector<std::string> const& values, void *addr) {
@@ -241,7 +243,7 @@ std::vector<void(ConfigFile::*)(std::vector<std::string> const&, void *)> Config
     setters[0] = &ConfigFile::ipAddrsHandler;
     setters[1] = &ConfigFile::defaultVectorHandler;
     setters[2] = &ConfigFile::errorPageHandler;
-    setters[3] = &ConfigFile::maxClientsHandler;
+    setters[3] = &ConfigFile::maxBodysizeHandler;
     setters[4] = &ConfigFile::httpMethodsHandler;
     setters[5] = &ConfigFile::defaultStringHandler;
     setters[6] = &ConfigFile::defaultStringHandler;

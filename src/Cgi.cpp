@@ -179,28 +179,20 @@ void CGI::configureIOHandling() {
     ite = _headers.end();
 
     if (it1 != ite && it2 != ite) {
-        return setErrorState(2);
+        return setErrorState(400);
     } else if (it1 != ite) {
         _tracklength = true;
         if (!(std::istringstream(it1->second) >> _recvbytes)) {
-            return setErrorState(3);
+            return setErrorState(400);
         }
-//        std::cout << "_clientbuf.length() = " << _clientbuf.length() << std::endl;
-//        std::cout << "in cgi, it->second: " << it1->second << ",  _recvbytes: " << _recvbytes << ", amt: " << (_clientbuf.length() - (_clientbuf.find("\r\n\r\n") + 4)) << std::endl;
-//        assert(0);
-        //_recvbytes -= (_clientbuf.length() - (_clientbuf.find("\r\n\r\n") + 4));
         _recvbytes -= std::min(_recvbytes, (_clientbuf.length() - (_clientbuf.find("\r\n\r\n") + 4)));
         if (!_recvbytes) {
-            //std::ofstream("abc.txt") << "_clientbuf: " << _clientbuf << ", " << _recvbytes << std::endl;
-            //assert(0);
             return setClientReady();
         }
-        //_recvbytes = str_convert<size_t>(it1->second);
     } else if (it2 != ite && it2->second == "chunked") {
         _unchunkflag = true;
     }
     _pstate = Client::MSG_BODY;
-    //std::cout << "_recvbytes: " << _recvbytes << std::endl;
 }
 
 int CGI::parseMsgBody() {

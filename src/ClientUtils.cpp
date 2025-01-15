@@ -64,6 +64,12 @@ std::map<int, std::string> Client::initHttpStatuses() {
     httpStatuses[403] = "Forbidden";
     httpStatuses[404] = "Not Found";
     httpStatuses[405] = "Method Not Allowed";
+    httpStatuses[409] = "Conflict";
+    httpStatuses[413] = "Content Too Large";
+    httpStatuses[414] = "Request-URI Too Long";
+    httpStatuses[500] = "Internal Server Error";
+    httpStatuses[501] = "Not Implemented";
+    httpStatuses[505] = "Version Not Supported";
     return httpStatuses;
 }
 

@@ -32,7 +32,7 @@ struct RouteInfo {
 };
 
 struct ServerInfo {
-    static int max_clients;
+    static size_t max_bodysize;
     static std::map<int, std::string> error_pages;
 
     std::vector<int> connfds;
@@ -74,7 +74,7 @@ class ConfigFile {
         void dirListHandler(std::vector<std::string> const&, void *);
         void httpMethodsHandler(std::vector<std::string> const&, void *);
         void errorPageHandler(std::vector<std::string> const&, void *);
-        void maxClientsHandler(std::vector<std::string> const&, void *);
+        void maxBodysizeHandler(std::vector<std::string> const&, void *);
         void ipAddrsHandler(std::vector<std::string> const&, void *);
         void defaultStringHandler(std::vector<std::string> const&, void *);
         void defaultVectorHandler(std::vector<std::string> const&, void *);

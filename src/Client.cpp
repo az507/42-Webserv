@@ -84,6 +84,7 @@ void Client::socketRecv() {
             case -1:        //handle_error("client recv");
             case 0:         /* closeCgis(), */closeConnection(); break ;
             default:        buf[bytes] = '\0';
+                            std::cout << "bytes recv'ed = " << bytes << std::endl;
                             std::cout << buf << std::endl;
                             parseHttpRequest(buf, bytes); _lastresponsetime = time(NULL); break ;
         }
@@ -125,13 +126,16 @@ void Client::socketSend() {
             case 0:         closeConnection(); break ;
             default:        std::advance(_send_it, bytes);
                             if (_send_it == _send_ite) {
+                                if (_pstate == ERROR) {
+                                    setPState(START_LINE);
+                                }
                                 it = _headers.find("Connection");
                                 if (it == _headers.end() || it->second == "close") {
                                     closeConnection();
                                 } else if (it->second == "keep-alive") {
                                     resetSelf();
                                 } else {
-                                    std::terminate();
+                                    assert(0);
                                }
                             }
         }

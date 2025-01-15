@@ -18,7 +18,7 @@ void Client::parseHttpRequest(const char *buf, size_t bytes) {
             case HEADERS:           res = parseHeaders(bytes); continue ;
             case MSG_BODY:          res = parseMsgBody(bytes); continue ; // DONT ENTER IF NON-POST REQUEST
             case FINISHED:          res = performRequest(); continue ;
-            case ERROR:             setPState(START_LINE); return ;
+            case ERROR:             /*setPState(START_LINE);*/ return ;
             default:                std::terminate(); // should not reach here
         }
     }
@@ -63,7 +63,7 @@ int Client::parseStartLine() {
         // consistent error here if cgi has content length set
         std::cerr << "\t_recvbuf: " << _recvbuf << '\n';
         std::cerr << "OPTION A, http_str: " << http_str << ", _requesturi: " << _requesturi<< ", http_version: " << http_version << "\n";
-        assert(0);
+        //assert(0);
         return setErrorState(400), 1;
     }
     for (int i = 0; i < 3; ++i) {
@@ -165,7 +165,8 @@ int Client::parseHeaders(size_t& bytes) {
             }
         }
     }
-    //std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
+    std::copy(_headers.begin(), _headers.end(), std::ostream_iterator<std::map<std::string, std::string>::value_type>(std::cout, "\n"));
+    //assert(0);
     if (checkServerName() == -1 || !configureIOMethod(_headers)) {
         return -1;
     }
@@ -198,6 +199,32 @@ int Client::parseMsgBody(size_t bytes) { // need to handle chunked encoding
     }
 }
 
+bool Client::configureIOMethod(const std::map<std::string, std::string>& headers) {
+    std::map<std::string, std::string>::const_iterator it1, it2, ite;
+
+    it1 = headers.find("Content-Length");
+    it2 = headers.find("Transfer-Encoding");
+    ite = headers.end();
+
+    if (it1 != ite && it2 != ite) {
+        return setErrorState(400), false; // bad request, both headers should never exist together
+    } else if (it2 != ite && it2->second.find("chunked") != std::string::npos) {
+        _unchunkflag = true;
+    } else if (it1 != ite) {
+        _tracklength = true;
+        if (!(std::istringstream(it1->second) >> _bytesleft)) {
+            return setErrorState(400), false;
+        } else if (_bytesleft > ServerInfo::max_bodysize) {
+            std::cout << "\tA) _bytesleft: " << _bytesleft << std::endl;
+            return setErrorState(413), false;
+        }
+        std::cout << "\tB) _bytesleft: " << _bytesleft << std::endl;
+        assert(0);
+    }
+    return true;
+}
+
+/*
 bool Client::configureIOMethod(std::map<std::string, std::string> const& _headers) {
     static const std::string content_length = "Content-Length", transfer_encoding = "Transfer-Encoding";
 
@@ -213,12 +240,16 @@ bool Client::configureIOMethod(std::map<std::string, std::string> const& _header
             setErrorState(400);//bad request
             return false;
         }
+        if (_bytesleft > ServerInfo::max_bodysize) {
+            return setErrorState(413), false;
+        }
     }
     if (_headers.count(transfer_encoding) && _headers.find(transfer_encoding)->second == "chunked") {
         _unchunkflag = true;
     }
     return true;
 }
+*/
 
 int Client::trackRecvBytes(size_t bytes) {
 
@@ -292,7 +323,7 @@ int Client::unchunkRequest()
         size_t chunk_size;
         if (!(iss >> std::hex >> chunk_size)) 
         {
-            std::cerr << "OPTION D\n";
+            std::cerr << "OPTION D, chunk_size: " << chunk_size << "\n";
             return setErrorState(400), -1; // Invalid chunk size
         }
 
