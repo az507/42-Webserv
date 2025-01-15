@@ -17,6 +17,7 @@ void Client::runCgiScript(std::pair<std::string, std::string> const& reqInfo) {
         default:        close(pipefds[1]);
                         Client::registerEvent(pipefds[0], EPOLLIN | EPOLLOUT);
     }
+    Client::addOpenFd(pipefds[0]);
     if (_httpmethod == POST_METHOD) {
         std::cout << "cgi object created (SEND_CGI)" << std::endl;
         _cgis.push_back(CGI(SEND_CGI, pipefds[0], _clientfd));
@@ -92,14 +93,15 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
     argv[0] = strdup(_requesturi.c_str());
     argv[1] = strdup(reqInfo.second.c_str());
     envp = initCgiEnv(reqInfo);
-    std::cerr << "before) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
+    //std::cerr << "before) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
     if (argv[0][0]) {
         char *ptr = strrchr(argv[0], '/');
         if (ptr && !ptr[1]) {
             *ptr = '\0';
         }
     }
-    std::cerr << "after) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
+    //std::cerr << "after) from cgi process, argv[1] = " << argv[1] << ", pwd = " << getcwd(NULL, 200) << '\n';
+    Client::closeOpenFds();
     if (execve(argv[0], argv.data(), envp.data()) == -1) {
         perror(argv[0]);
         std::copy(argv.begin(), argv.end() - 1, std::ostream_iterator<char *>(std::cout, "\n"));
@@ -113,10 +115,9 @@ void Client::executeCgi(int pipefd, std::pair<std::string, std::string> const& r
 void Client::registerEvent(int fd, uint32_t events) {
     struct epoll_event ev;
 
-    //(void)events;
     memset(&ev, 0, sizeof(ev));
     ev.data.fd = fd;
-    ev.events = events;//EPOLLIN | EPOLLOUT;
+    ev.events = events;
     if (epoll_ctl(Client::epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         handle_error("RE: epoll_ctl");
     }

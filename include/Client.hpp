@@ -79,6 +79,9 @@ class Client {
         static off_t getContentLength(std::string const&);
         static std::string getContentType(std::string const&);
 
+        static void addOpenFd(int);
+        static void addOpenFds(const std::vector<int>&);
+        static void closeOpenFds();
         static void deleteEvent(int);
         static void registerEvent(int, uint32_t);
 
@@ -158,6 +161,8 @@ class Client {
         std::list<CGI>::iterator _currptr;
 
         std::map<std::string, std::string> _headers;
+
+        static std::vector<int> open_fds;
 };
 
 #endif

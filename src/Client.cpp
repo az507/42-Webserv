@@ -2,6 +2,7 @@
 
 int Client::epollfd = 0;
 const char **Client::envp = NULL;
+std::vector<int> Client::open_fds;
 
 Client::Client(int connfd, int sockfd, std::vector<ServerInfo> const& _servers) :
         _pstate(START_LINE),
@@ -23,12 +24,8 @@ bool Client::operator!=(int sockfd) {
 }
 
 bool Client::operator==(int eventfd) {
-    //std::cout << "in Client::operator==, eventfd = " << eventfd << std::endl;
     if (!_cgis.empty()) {
         _currptr = std::find_if(_cgis.begin(), _cgis.end(), std::bind2nd(std::mem_fun_ref(&CGI::operator==), eventfd));
-    }
-    if (_currptr != _cgis.end()) {
-        //std::cout << "Found cgi event, size: " << _cgis.size() << std::endl;
     }
     return _currptr != _cgis.end() || eventfd == _clientfd;
 }
@@ -80,7 +77,6 @@ void Client::socketRecv() {
     ssize_t bytes;
     char buf[BUFSIZE + 1];
 
-    //std::cout << "parent in socketRecv" << std::endl;
     assert(_iostate != RECV_CGI);
     if (_iostate == RECV_HTTP && _cgis.empty()) {
         bytes = recv(_clientfd, buf, BUFSIZE, MSG_DONTWAIT);
@@ -131,7 +127,6 @@ void Client::socketSend() {
                             if (_send_it == _send_ite) {
                                 it = _headers.find("Connection");
                                 if (it == _headers.end() || it->second == "close") {
-                                    //assert(0);
                                     closeConnection();
                                 } else if (it->second == "keep-alive") {
                                     resetSelf();
@@ -145,7 +140,6 @@ void Client::socketSend() {
         if (!_currptr->socketSend()) {
             _cgis.erase(_currptr);
             _currptr = _cgis.end();
-            //assert(0);
         }
     } else {
         //std::cout << "bypassing Client::socketSend() for now" << std::endl;
@@ -216,12 +210,13 @@ void Client::setErrorState(int num) {
     _send_ite = _filebuf.end();
 }
 
-ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& _servers) const {
+ServerInfo const& Client::initServer(int connfd, std::vector<ServerInfo> const& servers) const {
     std::vector<ServerInfo>::const_iterator it, ite;
 
-    for (it = _servers.begin(), ite = _servers.end(); it != ite; ++it) {
+    for (it = servers.begin(), ite = servers.end(); it != ite; ++it) {
         //std::copy(it->connfds.begin(), it->connfds.end(), std::ostream_iterator<int>(std::cout, "\n"));
-        if (std::find_if(it->connfds.begin(), it->connfds.end(), std::bind2nd(std::equal_to<int>(), connfd)) != it->connfds.end()) {
+        //if (std::find_if(it->connfds.begin(), it->connfds.end(), std::bind2nd(std::equal_to<int>(), connfd)) != it->connfds.end()) {
+        if (std::find(it->connfds.begin(), it->connfds.end(), connfd) != it->connfds.end()) {
             break ;
         }
     }
@@ -257,6 +252,19 @@ std::string Client::getHttpStatus(int _httpcode) {
     } else {
         return it->second;
     }
+}
+
+void Client::addOpenFd(int fd) {
+    open_fds.push_back(fd);
+}
+
+void Client::addOpenFds(const std::vector<int>& vec) {
+    open_fds.insert(open_fds.end(), vec.begin(), vec.end());
+}
+
+void Client::closeOpenFds() {
+    std::for_each(open_fds.begin(), open_fds.end(), &close);
+    open_fds.clear();
 }
 
 //Client::Client() : {}

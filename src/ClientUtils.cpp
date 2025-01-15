@@ -9,6 +9,7 @@ int Client::getEpollfd() {
 void Client::setEpollfd(int epollfd) {
 
     Client::epollfd = epollfd;
+    Client::addOpenFd(epollfd);
 }
 
 void Client::setEnvp(const char **envp) {

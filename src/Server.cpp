@@ -6,7 +6,7 @@
 /*   By: xzhang <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/11/12 15:52:25 by xzhang            #+#    #+#             */
-/*   Updated: 2025/01/12 16:09:59 by achak            ###   ########.fr       */
+/*   Updated: 2025/01/13 17:18:59 by achak            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -391,7 +391,7 @@ std::string Server::createDirListHtml(std::string const& dirpath) {
     const char *pwd, *dirname;//, *absolute_path;
     std::string html, name, pwdstr, relative_path;
 
-    std::cout << "CURRENT PWD: " << getcwd(NULL, 100) << ", dirpath: " << dirpath << std::endl;
+    //std::cout << "CURRENT PWD: " << getcwd(NULL, 100) << ", dirpath: " << dirpath << std::endl;
     dirp = opendir(dirpath.c_str());
     if (!dirp) {
         return perror("opendir"), "";
