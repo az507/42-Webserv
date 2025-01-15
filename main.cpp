@@ -75,6 +75,7 @@ int main(int argc, char *argv[], char *envp[]) {
     struct addrinfo hints, *res;
     std::vector<ServerInfo> _servers;
 
+    //std::cout.setstate(std::ios_base::failbit);
     signal(SIGPIPE, SIG_IGN);
     signal(SIGCHLD, &sigchldHandler);
     Client::setEnvp(const_cast<const char **>(envp));

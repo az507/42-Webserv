@@ -14,7 +14,7 @@ NAME = webserv
 SRCS = main.cpp src/ConfigFile.cpp src/Server.cpp src/Client.cpp src/ClientParseHttp.cpp \
 	   src/ClientPerformRequest.cpp  src/ClientRunCgi.cpp src/ClientUtils.cpp src/Cgi.cpp
 CPP = g++
-CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -g#-fsanitize=address
+CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -MMD -MP -Iinclude -O2 -DNDEBUG#-g#-fsanitize=address
 OBJS = $(SRCS:.cpp=.o)
 DEP	= $(OBJS:.o=.d)
 REMOVE = rm -f

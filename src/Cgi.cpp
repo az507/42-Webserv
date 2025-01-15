@@ -12,7 +12,7 @@ int CGI::socketSend() {
     bytes = send(_activefd, &*_send_it, std::distance(_send_it, _send_ite),
         MSG_DONTWAIT);
     switch (bytes) {
-        case -1:        handle_error("send cgi");
+        case -1:        //handle_error("send cgi");
         case 0:         if (_iostate == Client::SEND_CGI) {
                             _iostate = Client::RECV_CGI;
                             break ;
@@ -63,7 +63,7 @@ void CGI::socketRecv() {
     }
     //std::cout << buf << std::endl;
     switch (bytes) {
-        case -1:        handle_error("recv cgi");
+        case -1:        //handle_error("recv cgi");
         case 0:         setClientReady(); break ;
         default:        parseCgiOutput(buf, bytes);
     }
