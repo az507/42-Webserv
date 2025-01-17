@@ -157,7 +157,7 @@ int CGI::parseCgiHeaders() {
         return 0;
     }
     iss.str(_clientbuf.substr(0, pos1 + 2));
-    while (!std::getline(iss, line).eof()) {
+    while (std::getline(iss, line)) {
         if (!iss) {
             iss.exceptions(iss.rdstate());
         } else {
