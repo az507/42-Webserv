@@ -1,6 +1,6 @@
 #include "ConfigFile.hpp"
 
-size_t ServerInfo::max_bodysize = 100000;
+size_t ServerInfo::max_bodysize = 0;
 std::map<int, std::string> ServerInfo::error_pages;
 
 /*
@@ -148,7 +148,7 @@ void *ConfigFile::convertIdxToAddr(int idx) {
         case DFL_FILE:      return reinterpret_cast<void *>(&servers.back().routes.back().dfl_file);
         case CGI_EXTENSION: return reinterpret_cast<void *>(&servers.back().routes.back().cgi_extensions);
         case UPLOAD_DIR:    return reinterpret_cast<void *>(&servers.back().routes.back().upload_dir);
-        default:            std::terminate();
+        default:            assert(0);
     }
 }
 

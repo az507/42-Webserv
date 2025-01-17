@@ -27,7 +27,7 @@ int Client::performRequest() {
             case GET_METHOD:            res = performGetMethod(); break ;
             case POST_METHOD:           res = performPostMethod(); break ;
             case DELETE_METHOD:         res = performDeleteMethod(); break ;
-            default:                    std::terminate();
+            default:                    assert(0);
         }
         setIOState(SEND_HTTP);
     } else if (access(_requesturi.c_str(), F_OK | X_OK) == 0) {

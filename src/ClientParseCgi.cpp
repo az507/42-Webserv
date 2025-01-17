@@ -28,7 +28,7 @@ void Client::parseCgiOutput(const char *buf, size_t bytes) {
                                 return ;
                                 //throw "abc123";
             case ERROR:         break ;
-            default:            std::terminate();
+            default:            assert(0);
         }
     }
     while (res);

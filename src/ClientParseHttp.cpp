@@ -19,7 +19,7 @@ void Client::parseHttpRequest(const char *buf, size_t bytes) {
             case MSG_BODY:          res = parseMsgBody(bytes); continue ; // DONT ENTER IF NON-POST REQUEST
             case FINISHED:          res = performRequest(); continue ;
             case ERROR:             /*setPState(START_LINE);*/ return ;
-            default:                std::terminate(); // should not reach here
+            default:                assert(0); // should not reach here
         }
     }
     while (res);
@@ -214,12 +214,9 @@ bool Client::configureIOMethod(const std::map<std::string, std::string>& headers
         _tracklength = true;
         if (!(std::istringstream(it1->second) >> _bytesleft)) {
             return setErrorState(400), false;
-        } else if (_bytesleft > ServerInfo::max_bodysize) {
-            std::cout << "\tA) _bytesleft: " << _bytesleft << std::endl;
+        } else if (ServerInfo::max_bodysize && _bytesleft > ServerInfo::max_bodysize) {
             return setErrorState(413), false;
         }
-        std::cout << "\tB) _bytesleft: " << _bytesleft << std::endl;
-        assert(0);
     }
     return true;
 }

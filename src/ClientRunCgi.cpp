@@ -50,7 +50,7 @@ std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const
         case GET_METHOD:        envp.push_back(strdup("REQUEST_METHOD=GET")); break ;
         case POST_METHOD:       envp.push_back(strdup("REQUEST_METHOD=POST")); break ;
         case DELETE_METHOD:     envp.push_back(strdup("REQUEST_METHOD=DELETE")); break ;
-        default:                std::terminate();
+        default:                assert(0);
     }
     flag = false;
     c_ite = _headers.end();
