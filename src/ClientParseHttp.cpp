@@ -1,7 +1,7 @@
 #include "Client.hpp"
 
 void Client::parseHttpRequest(const char *buf, size_t bytes) {
-    int res;
+    int res = 0;
 
     assert(_pstate != ERROR);
     if (_pstate == MSG_BODY && !_unchunkflag) {
@@ -155,7 +155,7 @@ int Client::parseHeaders(size_t& bytes) {
         return 0;
     }
     iss.str(_recvbuf.substr(0, pos));
-    while (!std::getline(iss, buf).eof()) {
+    while (std::getline(iss, buf)) {
         if (!iss) {
             iss.exceptions(iss.rdstate());
         } else {

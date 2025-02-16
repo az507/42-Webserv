@@ -150,6 +150,7 @@ void *ConfigFile::convertIdxToAddr(int idx) {
         case UPLOAD_DIR:    return reinterpret_cast<void *>(&servers.back().routes.back().upload_dir);
         default:            assert(0);
     }
+    return NULL;
 }
 
 void ConfigFile::dirListHandler(std::vector<std::string> const& values, void *addr) {

@@ -46,6 +46,7 @@ std::vector<char *> Client::initCgiEnv(std::pair<std::string, std::string> const
     if (_route) {
         envp.push_back(strdup(std::string("UPLOAD_DIR=").append(_route->upload_dir).c_str()));
     }
+    // This REQUEST_METHOD below is needed for Python CGI Module
     switch (_httpmethod) {
         case GET_METHOD:        envp.push_back(strdup("REQUEST_METHOD=GET")); break ;
         case POST_METHOD:       envp.push_back(strdup("REQUEST_METHOD=POST")); break ;

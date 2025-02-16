@@ -215,6 +215,7 @@ int main(int argc, char *argv[], char *envp[]) {
         }
         std::fill(events.begin(), events.end(), (struct epoll_event){});
         temp.splice(clients.end(), temp, temp.begin(), temp.end());
+        while (waitpid(-1, NULL, WNOHANG) > 0) ;
     }
 
     for (std::vector<ServerInfo>::const_iterator it = _servers.begin(); it != _servers.end(); ++it) {
